@@ -147,8 +147,10 @@ export function buildRuleDiagrams(initial, final, opts = {}) {
     }
 
     if (extras && !out.ok) {
-        onProgress && onProgress('Looking for diagrams with an extra particle');
-        out.extended = extendedDiagrams(initial, final, { sqrtS, deadline }).map(it => finishItem(Object.assign(it, { kind: 'extended' }), { initial: it.initial, final: it.final, sqrtS }));
+        onProgress && onProgress('Searching synthesis routes: adding external particles that supply the missing quantum numbers');
+        const routes = extendedDiagrams(initial, final, { sqrtS, deadline, loops, gauge: opts.gauge, buildRuleDiagrams });
+        out.extended = routes.slice();
+        out.extendedClosed = routes.closed || [];
         if (out.extended.length) out.ok = true;
     }
     out.sectionNotes = processNotes(out.tree.concat(out.loops));

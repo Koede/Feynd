@@ -310,9 +310,10 @@ export function braceOverlay(d, withColour = false) {
             const y0 = ys[b.from] - 17, y1 = ys[b.to] + 17, mid = (y0 + y1) / 2;
             const dir = side === 'L' ? -1 : 1;
             const x = side === 'L' ? m.pad - 38 : FV.W - m.pad + 38;
-            const label = (HADRONS[names[b.gid]] && HADRONS[names[b.gid]].label) || names[b.gid];
-            out += '<path d="' + bracePath(x, y0, y1, dir) + '" fill="none" stroke="' + BLUE + '" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>'
-                + '<text class="hname" x="' + (x + dir * 24) + '" y="' + Math.round(mid) + '" text-anchor="' + (side === 'L' ? 'end' : 'start') + '" dominant-baseline="central" fill="' + BLUE + '">' + label + '</text>';
+            const label = ((HADRONS[names[b.gid]] && HADRONS[names[b.gid]].label) || names[b.gid]);
+            const col = b.extra ? '#b45309' : BLUE;
+            out += '<path d="' + bracePath(x, y0, y1, dir) + '" fill="none" stroke="' + col + '" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"' + (b.extra ? ' stroke-dasharray="5 3"' : '') + '/>'
+                + '<text class="hname" x="' + (x + dir * 24) + '" y="' + Math.round(mid) + '" text-anchor="' + (side === 'L' ? 'end' : 'start') + '" dominant-baseline="central" fill="' + col + '">' + label + '</text>';
             if (sol) {
                 const legs = ids.slice(b.from, b.to + 1);
                 const cols = [], antis = [];

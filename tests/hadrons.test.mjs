@@ -67,3 +67,15 @@ test('quark-level decay diagrams: strong, electromagnetic and weak', () => {
         assert.ok(note && note.text.includes(kind), i + ' → ' + f + ' is ' + kind);
     }
 });
+
+test('synthesis routes: p → n is reached with added particles, ranked naturally', () => {
+    const r = buildRuleDiagrams(['p'], ['n'], { extras: true });
+    assert.ok(!r.rules.allowed && r.extended.length >= 6);
+    const names = r.extended.map(it => it.initial.slice().sort().join(' ') + ' → ' + it.final.slice().sort().join(' '));
+    for (const want of ['p γ → n π⁺', 'p π⁻ → n π⁰', 'e⁻ p → n νe']) assert.ok(names.includes(want), want);
+    assert.ok(r.extended[0].rules && !r.extended[0].rules.needsWeak, 'a strong/EM route ranks first');
+    assert.ok(r.extendedClosed.some(c => c.fin.includes('π⁺') || c.fin.includes('e⁺')), 'closed decay of a free proton is reported');
+    const nb = buildRuleDiagrams(['n'], ['p'], { extras: true });
+    assert.deepEqual(nb.extended[0].final.slice().sort(), ['e⁻', 'p', 'ν̄e']);   // β decay first
+    for (const it of r.extended) assert.ok(it.diagram && it.added && (it.added.in.length + it.added.out.length) >= 1);
+});

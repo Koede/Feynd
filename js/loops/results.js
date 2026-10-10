@@ -29,6 +29,7 @@ a { color: var(--accent); }
 .lch .ttl { min-width: 0; overflow-wrap: anywhere; }
 .chips { margin-left: auto; display: flex; flex-wrap: wrap; gap: 4px; }
 .chip { font: 600 10px/1 var(--sans); letter-spacing: .05em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--rule); border-radius: 999px; padding: 3px 7px; background: #fff; }
+.route { font: 600 11px/1.2 var(--sans); color: var(--accent); margin-left: 4px; }
 .chip.ord { text-transform: none; letter-spacing: 0; font: 500 12px/1 var(--math); color: var(--ink); }
 .chip.qed { color: #b45309; border-color: #e8c9a6; } .chip.qcd { color: #1f7a45; border-color: #b9dcc7; } .chip.ew { color: #8e44ad; border-color: #dcc6e6; } .chip.higgs { color: #4d5964; }
 .svgbox { min-height: 150px; border-radius: 10px; background: #fffdf8; }
@@ -160,13 +161,13 @@ function chipsHTML(item) {
     const loops = nl ? '<span class="chip">' + nl + '-loop</span>' : '';
     const sym = item.diagram && item.diagram.symmetry > 1 ? '<span class="chip" title="symmetry factor">S = 1/' + item.diagram.symmetry + '</span>' : '';
     const gauge = item.diagram && item.diagram.gauge === 'feynman' ? '<span class="chip" title="\'t Hooft–Feynman gauge">R<sub>ξ</sub></span>' : '';
-    const extra = item.extra ? '<span class="chip">extra ' + (item.side === 'both' ? 'in + out' : item.side) + ': ' + item.extra + '</span>' : '';
+    const extra = item.added ? (item.added.in.length ? '<span class="chip">+ in: ' + esc(item.added.in.join(' ')) + '</span>' : '') + (item.added.out.length ? '<span class="chip">+ out: ' + esc(item.added.out.join(' ')) + '</span>' : '') + (item.loopRoute ? '<span class="chip">loop-induced</span>' : '') : (item.extra ? '<span class="chip">extra ' + (item.side === 'both' ? 'in + out' : item.side) + ': ' + item.extra + '</span>' : '');
     return '<span class="chips">' + (item.order ? '<span class="chip ord" title="coupling order">' + item.order + '</span>' : '') + inter + loops + sym + gauge + extra + '</span>';
 }
 
 function cardHTML(item, sec, idx, view) {
     const coloured = view.colourMode && item.diagram.colour && item.diagram.colour.sol;
-    const head = item.kind === 'extended' ? procHTML(item.ini, item.fin) : (item.title || '');
+    const head = item.kind === 'extended' ? symProc(item.initial || [], item.final || []) + (item.routeName ? ' <span class="route">' + esc(item.routeName) + '</span>' : '') : (item.title || '');
     return '<figure class="lcard" data-sec="' + sec + '" data-i="' + idx + '">'
         + '<div class="lch"><span class="ttl">' + head + '</span>' + chipsHTML(item) + '</div>'
         + (coloured ? '<div class="vtabs" role="tablist"><button type="button" class="on" data-view="colour">Diagram</button><button type="button" data-view="flow">Colour flow</button></div>' : '')
@@ -375,8 +376,11 @@ export function renderLoopResults(container, data, view = {}) {
                     return '<details class="grp"' + (gi === 0 ? ' open' : '') + ' data-grp="loops:' + esc(g) + '"><summary>' + esc(g) + '<span class="cnt">' + vis.length + '</span></summary><div class="body">' + sectionCards('loops', vis, 'loops:' + g) + '</div></details>';
                 }).join('') + '</section>';
         } else if (data.loopNote) h += '<section class="sec"><h3>' + (['', 'One', 'Two', 'Three'][data.loopOrder || 1]) + '-loop diagrams</h3><div class="note">' + data.loopNote + '</div></section>';
-        if (lists.extended.length) {
-            h += '<section class="sec"><h3>With additional external particles</h3><p class="lede">Nothing connects the particles as given. These diagrams do, with the added legs highlighted; each one passed the same selection rules.</p>' + sectionCards('extended', lists.extended, 'extended') + '</section>';
+        if (lists.extended.length || (data.extendedClosed && data.extendedClosed.length)) {
+            h += '<section class="sec"><h3>Synthesis routes: with additional external particles</h3><p class="lede">Nothing connects the particles exactly as given. These processes do: each adds the fewest and lightest particles that supply the missing charge, baryon and lepton numbers, on the incoming side (absorbed from a beam or target) or the outgoing side (emitted). Every one passed the same selection rules' + (data.sqrtS ? ' at √s = ' + data.sqrtS + ' GeV' : '; scattering thresholds need √s, so set it to check them') + '. Added particles are named on each card.</p>';
+            if (lists.extended.length) h += sectionCards('extended', lists.extended, 'extended');
+            if (data.extendedClosed && data.extendedClosed.length) h += '<div class="note" style="margin-top:10px"><b>Closed for free particles, open with energy supplied:</b><ul style="margin:6px 0 0 16px">' + data.extendedClosed.map(c => '<li>' + symProc(c.ini, c.fin) + (c.name ? ' — ' + esc(c.name) : '') + '. ' + c.why + ' Inside a nucleus the binding energy can pay the difference (β⁺ decay and electron capture of proton-rich nuclei).</li>').join('') + '</ul></div>';
+            h += '</section>';
         }
         root.innerHTML = h;
         lazy();

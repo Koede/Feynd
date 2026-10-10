@@ -1,5 +1,52 @@
 # Changelog
 
+## Synthesis routes: added external particles now work for every particle, hadrons included
+
+Previously, *Allow additional external particles?* found nothing for a process such as p → n. The old search accepted only elementary particles on both ends and tried only elementary extras, so any process with a hadron returned nothing.
+
+### `js/loops/solve.js` (rewritten)
+
+**What counts as an extra.** Any elementary particle, or any of the 132 hadrons in the catalogue, can be added on the incoming side (absorbed from a beam or target) or the outgoing side (emitted). Free quarks and gluons are used only when the process is already partonic.
+
+**Finding candidates.** The search is guided by quantum numbers instead of trying everything. The extras must supply the deficit in (3Q, 3B, L_e, L_μ, L_τ): Σ(added in) − Σ(added out) = Σ(final) − Σ(initial). A hash of quantum-number vectors yields every route with one or two added particles directly: one in, one out, one of each, two in, or two out.
+
+**Ranking.** Every candidate is first checked against the full selection rules, with √s if you set one. Survivors are ranked by how natural the route is:
+- fewer and lighter added particles, with photons first, then neutrinos, light leptons and pions;
+- strong or electromagnetic before weak;
+- less flavour change;
+- spontaneous decays first, since they need no beam;
+- three particles fusing into one come last.
+
+**Building.** The best routes are drawn by the same builder as a typed process: tree level, quark level for hadrons, and loop-induced routes when loops are allowed. Up to 18 routes are shown, with a 25 s total budget.
+
+**Naming.** Well-known routes carry their names: electron capture, inverse β decay (Reines–Cowan), pion charge exchange, pion photoproduction, muon capture, neutron β decay, neutrino absorption.
+
+**Closed decays.** A decay that fails only on kinematics is reported in a separate note, because it happens wherever the energy is supplied. Examples: p → n π⁺, and β⁺ decay p → n e⁺ ν, which occurs inside proton-rich nuclei.
+
+**Trivial routes excluded.** When a particle actually changes into another, routes are dropped if the added particle is already on the other side, since it would only scatter through (p e⁺ → e⁺ p).
+
+**p → n now returns:**
+- p γ → n π⁺ (photoproduction)
+- p π⁻ → n π⁰ (charge exchange)
+- p π⁻ → n γ
+- p π⁰ → n π⁺
+- e⁻ p → n ν_e (electron capture)
+- ν̄_e p → n e⁺ (inverse β decay)
+- μ⁻ p → n ν_μ (muon capture)
+- …
+
+n → p leads with β decay, n → p e⁻ ν̄_e.
+
+### Drawing and cards
+
+- Added hadrons get a dashed orange brace. Added elementary legs and the quark lines of added hadrons get a soft dashed ring. The ring had no style before and rendered as solid black discs.
+- Cards head with the full process in hadron symbols, the route's name, and **+ in** / **+ out** chips listing what was added; loop-induced routes are marked.
+- The section is now "Synthesis routes", with an explanation, and the progress text says what is being searched.
+
+### Tests (122, all passing)
+
+`tests/hadrons.test.mjs` now checks that p → n yields photoproduction, charge exchange and electron capture, ranks a strong or electromagnetic route first, and reports the closed free-proton decay. It also checks that n → p leads with β decay.
+
 ## Every observed ground-state hadron, with its decays
 
 The eightfold view no longer greys out hadrons as "not modelled here". Every observed member is in the catalogue and can be selected. Bottom ground states are added as well, and decays of all of them are built at quark level.
