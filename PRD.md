@@ -51,14 +51,18 @@ verified by hand in the browser.
 | `js/directory.js` | Mass tooltips |
 | `loops.html`, `js/loopchannel.js` | Rule-built page: typed processes, zones with colours, √s, discovery, background worker |
 | `js/loopui.js` | Particle panel for loops.html: colour pickers under every coloured particle, 3D eightfold view |
-| `js/loops/engine.js` | Vertex table, tree enumeration (cubic and quartic vertices anywhere), planar ordering, layout, SVG, Feynman-rule tooltips, counterterms |
-| `js/loops/oneloop.js` | Every one-loop diagram: rings of propagators with trees attached; loop-induced processes |
+| `js/loops/pdg.js` | Every Standard Model parameter (PDG 2026): couplings, masses with schemes, CKM fit; v from G_F |
+| `js/loops/engine.js` | Vertex table (physical; plus 't Hooft–Feynman Goldstone/ghost tables `VR`, `Q4R`), tree enumeration, planar side choice (reference order, identical-particle exchange), layout scored on the drawn geometry, SVG incl. self-loops, Feynman-rule tooltips, counterterm constants |
+| `js/loops/graph.js` | General graph engine for any loop order: topology moves, labelling from the vertex table, canonical form, symmetry factors, 1PI analysis, planarity, `loopDiagrams()` |
+| `js/loops/insert.js` | "Generate loop here": vertex corrections, self-energies (with mixing), tadpoles, new propagator between two points; all computed on the spot |
+| `js/loops/renorm.js` | Renormalization of any diagram: per-piece divergence degree, counterterms, BPHZ subdivergences with counterterm diagrams, LSZ factors, symmetry factor, loop sign |
+| `js/loops/oneloop.js` | Earlier ring-based one-loop generator, kept as an independent cross-check in the tests |
 | `js/loops/rules.js` | Selection rules: Q, B, L_e/L_μ/L_τ, colour, kinematics incl. confinement thresholds and √s, flavour (ΔS ≤ 1, ΔS = ΔQ), C, P/CP, Landau–Yang, 0 → 0 + γ, isospin note |
 | `js/loops/color.js`, `colourui.js` | Colour-flow solver ('t Hooft lines), coloured and double-line drawings, colour pickers |
 | `js/loops/hadronq.js` | Hadrons at quark level: spectators, rule-built mediators, braces, colour singlets |
 | `js/loops/caveats.js`, `cite.js` | Phenomenological notes per diagram, with references |
 | `js/loops/build.js`, `discovery.js`, `solve.js`, `worker.js` | Named-process build, discovery for any initial state, extra-particle search, worker entry |
-| `js/loops/results.js`, `explorer.js` | Result cards, rules panel, filters, colour views, loop explorer |
+| `js/loops/results.js`, `explorer.js` | Result cards (right-click a vertex or line to add a loop there), rules panel, filters, colour views; loop explorer with context menu, option gallery, gauge switch and live renormalization |
 | `js/loops/validate.js` | Physics audit of any diagram |
 | `js/loops/eightfold.js` | SU(4) flavour multiplets in 3D with I₃, Y, C axes |
 

@@ -63,7 +63,7 @@ export function discover(initial, opts = {}) {
             if (sqrtS && mOut >= budget) { bump('kinematics'); continue; }
             const rules = checkProcess(initial, fin, { sqrtS, colours: colours ? { initial: colours.initial, final: fin.map(() => null) } : null });
             if (!rules.allowed) { bump(rules.checks.find(c => c.status === 'fail').id); continue; }
-            const res = buildRuleDiagrams(initial, fin, { loops: false, autoLoops: loops, colours: colours ? { initial: colours.initial, final: fin.map(() => null) } : null, sqrtS, deadline: Math.min(deadline, Date.now() + 8000) });
+            const res = buildRuleDiagrams(initial, fin, { loops: false, autoLoops: loops, gauge: opts.gauge, colours: colours ? { initial: colours.initial, final: fin.map(() => null) } : null, sqrtS, deadline: Math.min(deadline, Date.now() + 8000) });
             const items = res.tree.concat(res.loops);
             if (!items.length) { bump('no diagram'); continue; }
             const g = {

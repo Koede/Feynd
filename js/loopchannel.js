@@ -25,6 +25,11 @@ const els = {
     mult: document.getElementById('maxMultiplicity'),
     loops: document.getElementById('allowLoops'),
     extras: document.getElementById('allowExtras'),
+    loopOpts: document.getElementById('loopOpts'),
+    loopOrder: document.getElementById('loopOrder'),
+    loopGauge: document.getElementById('loopGauge'),
+    loopTadpoles: document.getElementById('loopTadpoles'),
+    loopExternal: document.getElementById('loopExternal'),
     colour: document.getElementById('addColour'),
     sqrtS: document.getElementById('sqrtS'),
     finals: document.getElementById('discoverFinals'),
@@ -40,7 +45,7 @@ const colourMode = () => !!(els.colour && els.colour.checked);
 const PREF_KEY = 'feynman-loops-prefs';
 function savePrefs() {
     try {
-        localStorage.setItem(PREF_KEY, JSON.stringify({ loops: els.loops.checked, extras: els.extras.checked, colour: els.colour.checked, mult: els.mult.value, finals: els.finals && els.finals.value }));
+        localStorage.setItem(PREF_KEY, JSON.stringify({ loops: els.loops.checked, extras: els.extras.checked, colour: els.colour.checked, mult: els.mult.value, finals: els.finals && els.finals.value, loopOrder: els.loopOrder && els.loopOrder.value, loopGauge: els.loopGauge && els.loopGauge.value, loopTadpoles: els.loopTadpoles && els.loopTadpoles.checked, loopExternal: els.loopExternal && els.loopExternal.checked }));
     } catch (e) { /* storage unavailable: the page works without it */ }
 }
 function loadPrefs() {
@@ -50,7 +55,21 @@ function loadPrefs() {
         els.loops.checked = !!p.loops; els.extras.checked = !!p.extras; els.colour.checked = !!p.colour;
         if (p.mult) els.mult.value = p.mult;
         if (p.finals && els.finals) els.finals.value = p.finals;
+        if (p.loopOrder && els.loopOrder) els.loopOrder.value = p.loopOrder;
+        if (p.loopGauge && els.loopGauge) els.loopGauge.value = p.loopGauge;
+        if (els.loopTadpoles) els.loopTadpoles.checked = !!p.loopTadpoles;
+        if (els.loopExternal) els.loopExternal.checked = !!p.loopExternal;
     } catch (e) { /* ignore */ }
+}
+/** The loop options only make sense when loops are on. */
+function syncLoopOpts() { if (els.loopOpts) els.loopOpts.hidden = !els.loops.checked; }
+function loopOptions() {
+    return {
+        loopOrder: Number(els.loopOrder ? els.loopOrder.value : 1) || 1,
+        gauge: els.loopGauge ? els.loopGauge.value : 'unitary',
+        tadpoles: !!(els.loopTadpoles && els.loopTadpoles.checked),
+        externalLegs: !!(els.loopExternal && els.loopExternal.checked)
+    };
 }
 
 // -------------------------------------------------------------- drop zones
@@ -235,10 +254,10 @@ function generate() {
     const colours = colourMode() ? { initial: zones.initial.map(p => colourKindOf(p.sym) ? (p.col || defaultColour(p.sym)) : null), final: zones.final.map(p => colourKindOf(p.sym) ? (p.col || null) : null) } : null;
     const view = { colourMode: colourMode() };
     if (fin.length) {
-        runJob({ type: 'build', initial: ini, final: fin, opts: { loops: els.loops.checked, extras: els.extras.checked, colours, sqrtS: sv } },
+        runJob({ type: 'build', initial: ini, final: fin, opts: Object.assign({ loops: els.loops.checked, extras: els.extras.checked, colours, sqrtS: sv }, loopOptions()) },
             (data) => renderLoopResults(els.results, data, view));
     } else {
-        runJob({ type: 'discover', initial: ini, opts: { maxMultiplicity: Number(els.mult.value || 3), loops: els.loops.checked, colours: colours ? { initial: colours.initial } : null, sqrtS: sv, finals: els.finals ? els.finals.value : undefined } },
+        runJob({ type: 'discover', initial: ini, opts: Object.assign({ maxMultiplicity: Number(els.mult.value || 3), loops: els.loops.checked, colours: colours ? { initial: colours.initial } : null, sqrtS: sv, finals: els.finals ? els.finals.value : undefined }, loopOptions(), { loopOrder: 1 }) },
             (data) => { data.initial = ini; renderDiscovery(els.results, data, view); });
     }
 }
@@ -305,7 +324,7 @@ document.querySelectorAll('.clear-zone').forEach(btn => btn.addEventListener('cl
 }));
 document.addEventListener('particle-pick', (e) => addParticle(e.detail.symbol, activeZone, e.detail.colour));
 document.getElementById('generateBtn').addEventListener('click', generate);
-[els.loops, els.extras, els.mult, els.finals].filter(Boolean).forEach(b => b.addEventListener('change', () => { savePrefs(); if (zones.initial.length) generate(); }));
+[els.loops, els.extras, els.mult, els.finals, els.loopOrder, els.loopGauge, els.loopTadpoles, els.loopExternal].filter(Boolean).forEach(b => b.addEventListener('change', () => { syncLoopOpts(); savePrefs(); if (zones.initial.length) generate(); }));
 els.colour.addEventListener('change', () => {
     document.body.classList.toggle('colour-mode', colourMode());
     if (colourMode()) zones.initial.forEach(p => { if (!p.col && colourKindOf(p.sym)) p.col = defaultColour(p.sym); });
@@ -327,6 +346,7 @@ document.querySelectorAll('.preset-btn').forEach(btn => btn.addEventListener('cl
 
 // -------------------------------------------------------------------- start
 loadPrefs();
+syncLoopOpts();
 document.body.classList.toggle('colour-mode', colourMode());
 renderParticlePanel(document.querySelector('.left-panel'));
 bindParticleInputs();

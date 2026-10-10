@@ -482,7 +482,7 @@ export function blobPlanar(S, blob) {
 // ------------------------------------------------------------------ external order for drawing
 
 /** Cyclic order of the external legs in some planar drawing, preferring the initial legs together. */
-export function planarExternalOrder(S, nIn) {
+export function planarExternalOrder(S, nIn, opts = {}) {
     const ext = S.nodes.map((n, x) => n.ext ? x : -1).filter(x => x >= 0);
     const n = ext.length;
     if (n < 3) return null;
@@ -513,7 +513,11 @@ export function planarExternalOrder(S, nIn) {
     if (orders.length * inner > 400000) return null;
     const V = nodes.length + 1, Ecount = darts.length / 2;
     const next = new Array(darts.length);
+    const found = [];
+    let foundTr = Infinity;
     for (const o of orders) {
+        if (found.length && trans(o) > foundTr) break;
+        if (found.length >= 24) break;
         const infRot = o.map(k => legDart.get(k));
         infRot.forEach((d, j) => { next[d] = infRot[(j + 1) % infRot.length]; });
         for (let it = 0; it < inner; it++) {
@@ -527,10 +531,10 @@ export function planarExternalOrder(S, nIn) {
                 let d = d0, g = 0;
                 while (!seen[d] && g++ < 4 * darts.length) { seen[d] = 1; d = next[twin[d]]; }
             }
-            if (V - Ecount + F === 2) return o;
+            if (V - Ecount + F === 2) { if (!opts.all) return o; found.push(o); foundTr = trans(o); break; }
         }
     }
-    return null;
+    return opts.all ? found : null;
 }
 
 // ------------------------------------------------------------------ conversion
@@ -629,16 +633,10 @@ export function toDiagram(S, labels, ini, fin, mdl, opts = {}) {
         s *= Math.max(info ? info.strength : 1, 1e-9);
     });
     d.strength = s / sym;
-    // external order
-    const o = A.loops <= 1 && !A.tadpole ? null : planarExternalOrder(S, nIn);
-    if (o) {
-        const n = o.length;
-        let start = 0;
-        for (let i = 0; i < n; i++) if (o[i] < nIn && !(o[(i - 1 + n) % n] < nIn)) { start = i; break; }
-        const rot = o.slice(start).concat(o.slice(0, start));
-        const pi = rot.filter(x => x < nIn), po = rot.filter(x => x >= nIn).reverse();
-        d.verts.forEach(v => { if (v.kind === 'ext') { const arr = v.side === 'in' ? pi : po; v.slot = arr.indexOf(v.extIdx); v.nSide = arr.length; } });
-    } else FV.orderExternals(d);
+    // external order: from planar embeddings (trees and simple one-loop graphs use the engine's own)
+    const orders = A.loops <= 1 && !A.tadpole ? null : planarExternalOrder(S, nIn, { all: true });
+    const best = orders && orders.length ? FV.chooseSides(d, FV.sideCandidates(d, orders)) : null;
+    if (best) FV.applySides(d, best); else { FV.orderExternals(d); if (orders) d.needsCross = true; }
     return d;
 }
 
@@ -648,7 +646,7 @@ function coreShape(S, b) {
     b.edges.forEach(i => { const e = S.edges[i]; deg.set(e.u, (deg.get(e.u) || 0) + 1); deg.set(e.v, (deg.get(e.v) || 0) + 1); });
     const branch = [...deg.entries()].filter(([, k]) => k >= 3);
     if (b.loops === 2) {
-        if (branch.length === 1 && branch[0][1] === 4) return 'figure-eight';
+        if (branch.length === 1 && branch[0][1] === 4) return 'figure-eight (two loops share a quartic vertex)';
         if (branch.length === 2) {
             // three paths between the branch points; count the vertices on each
             const [x, y] = branch.map(q => q[0]);
@@ -669,9 +667,10 @@ function coreShape(S, b) {
             }
             lens.sort((a, c) => a - c);
             if (lens.length === 3) {
-                if (lens[0] === 0 && lens[1] === 0 && lens[2] === 0) return 'sunset';
-                if (lens[0] === 0) return 'theta, nested loop';
-                return 'theta (' + lens.join(', ') + ')';
+                if (lens[2] === 0) return 'sunset';
+                if (lens[1] === 0) return 'self-energy inserted in the loop';
+                if (lens[0] === 0) return 'vertex inserted in the loop';
+                return blobPlanar(S, b) === false ? 'crossed ladder' : 'ladder (' + lens.join(', ') + ')';
             }
         }
         if (branch.length === 2 || branch.length === 1) return 'two cycles';

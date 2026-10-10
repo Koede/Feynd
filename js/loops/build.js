@@ -11,7 +11,7 @@
 import { FV } from './engine.js';
 import { toEngineIds } from './symbols.js';
 import { hadronDiagram, isHadronSymbol } from './hadronq.js';
-import { oneLoopDiagrams } from './oneloop.js';
+import { loopDiagrams } from './graph.js';
 import { extendedDiagrams } from './solve.js';
 import { checkProcess } from './rules.js';
 import { colourValid, colourForElementary } from './color.js';
@@ -54,7 +54,8 @@ function finishItem(it, ctx) {
 
 /**
  * initial, final: site symbols.
- * opts: { loops, extras, colours: { initial, final } | null, sqrtS, deadline, onProgress }
+ * opts: { loops, extras, colours: { initial, final } | null, sqrtS, deadline, onProgress,
+ *         loopOrder (1 | 2), tadpoles, externalLegs, gauge ('unitary' | 'feynman') }
  */
 export function buildRuleDiagrams(initial, final, opts = {}) {
     const { loops = false, extras = false, colours = null, sqrtS = null, onProgress } = opts;
@@ -109,22 +110,34 @@ export function buildRuleDiagrams(initial, final, opts = {}) {
 
             const wantLoops = loops || (!out.tree.length && opts.autoLoops);
             if (wantLoops) {
-                onProgress && onProgress('Enumerating one-loop diagrams');
-                const lr = oneLoopDiagrams(ini, fin, { deadline, includeExternal: false });
+                // loop-induced processes start at one loop, whatever order was asked for
+                const L = out.tree.length ? Math.max(1, Math.min(3, opts.loopOrder || 1)) : 1;
+                const gauge = opts.gauge === 'feynman' ? 'feynman' : 'unitary';
+                out.loopOrder = L; out.gauge = gauge;
+                out.loopTadpoles = !!opts.tadpoles; out.loopExternalShown = !!opts.externalLegs;
+                onProgress && onProgress('Enumerating ' + (L === 1 ? 'one' : L === 2 ? 'two' : 'three') + '-loop diagrams' + (gauge === 'feynman' ? ' (’t Hooft–Feynman gauge)' : ''));
+                const lr = loopDiagrams(ini, fin, L, {
+                    model: gauge, deadline, limit: opts.loopLimit || (L === 1 ? 4000 : 3000),
+                    tadpoles: !!opts.tadpoles, externalLegs: !!opts.externalLegs,
+                    onProgress: (done, total) => onProgress && onProgress('Labelling ' + L + '-loop topologies: ' + done + ' / ' + total)
+                });
                 let ld = 0;
                 for (const it of lr.items) {
                     let sol = null;
                     if (colours) { sol = colourForElementary(it.diagram, colours.initial, colours.final); if (!sol) { ld++; continue; } }
                     else if (!colourValid(it.diagram)) { ld++; continue; }
                     if (sol) it.diagram.colour = { sol };
+                    it.diagram.gauge = gauge;
                     it.kind = 'loop'; it.initial = initial; it.final = final;
                     if (!out.tree.length) it.group = 'Loop-induced · ' + it.group;
                     out.loops.push(finishItem(it, Object.assign({}, ctx, { loopInduced: !out.tree.length })));
                 }
                 out.loopExternal = lr.external;
+                out.loopTadpoleCount = lr.tadpoles;
                 out.loopTruncated = lr.truncated;
                 out.loopDropped = ld;
-                if (!out.loops.length) out.loopNote = lr.reason || (ld ? 'Every one-loop diagram vanishes by colour conservation.' : 'No one-loop diagram connects these particles.');
+                out.loopTopologies = lr.topologies;
+                if (!out.loops.length) out.loopNote = lr.reason || (ld ? 'Every ' + L + '-loop diagram vanishes by colour conservation.' : 'No ' + L + '-loop diagram connects these particles.');
                 else out.ok = true;
             }
         }

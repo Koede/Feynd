@@ -56,11 +56,14 @@ test('audit: a sample of tree and loop diagrams obey the Feynman rules', () => {
     assert.ok(checked > 100);
 });
 
-test('planar external ordering: trees are drawn without crossings', () => {
-    for (const [a, b] of [['e- e+', 'mu- mu+ gamma gamma'], ['g g', 'g g g'], ['e- e+', 'e- e+ e- e+']]) {
-        for (const base of FV.generate(ids(a), ids(b)).bases.slice(0, 6)) {
+test('planar external ordering: trees cross only where identical particles are exchanged', () => {
+    for (const [a, b] of [['e- e+', 'mu- mu+ gamma gamma'], ['g g', 'g g g'], ['e- e+', 'e- e+ e- e+'], ['e- e+', 'mu- mu+']]) {
+        for (const base of FV.generate(ids(a), ids(b)).bases.slice(0, 8)) {
             const d = FV.cloneDiag(base);
-            assert.equal(FV.layoutDiag(d), 0, a + ' -> ' + b + ' ' + base.label);
+            FV.layoutDiag(d);
+            const bad = FV.crossingsDrawn(d).filter(([x, y]) => !FV.sameLine(d, x, y));
+            assert.equal(bad.length, 0, a + ' -> ' + b + ' ' + base.label);
+            if (!d.exchangeDrawn) assert.equal(FV.crossingsDrawn(d).length, 0, a + ' -> ' + b + ' ' + base.label);
         }
     }
 });

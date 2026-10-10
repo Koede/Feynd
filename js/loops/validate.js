@@ -31,7 +31,7 @@ export function validateDiagram(d0, ini, fin) {
     const vid = new Map(d.verts.map(v => [v.id, v]));
     for (const e of d.edges) {
         if (!vid.has(e.a) || !vid.has(e.b)) bad.push(`edge ${e.id} has a missing endpoint`);
-        if (e.a === e.b) bad.push(`edge ${e.id} is a self-loop on one vertex`);
+        if (e.a === e.b && (!vid.has(e.a) || vid.get(e.a).kind !== 'v')) bad.push(`edge ${e.id} is a self-loop on an external point`);
         if (!P()[e.p]) bad.push(`edge ${e.id} carries unknown particle ${e.p}`);
     }
     if (bad.length) return bad;
@@ -81,7 +81,7 @@ export function validateDiagram(d0, ini, fin) {
 
     // loops
     const L = FV.countLoops(d);
-    const declared = (d.loops || []).length;
+    const declared = d.nloops !== undefined ? d.nloops : (d.loops || []).length;
     if (L !== declared) bad.push(`graph has ${L} loops but ${declared} were inserted`);
     return bad;
 }

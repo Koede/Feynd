@@ -154,9 +154,12 @@ function notesHTML(notes, open) {
 
 function chipsHTML(item) {
     const inter = (item.interactions || []).map(g => '<span class="chip ' + g.toLowerCase() + '">' + ({ EW: 'weak', QED: 'QED', QCD: 'QCD', Higgs: 'Higgs' }[g] || g) + '</span>').join('');
-    const loops = item.diagram && item.diagram.loops && item.diagram.loops.length ? '<span class="chip">' + item.diagram.loops.length + '-loop</span>' : '';
+    const nl = item.diagram ? FV.countLoops(item.diagram) : 0;
+    const loops = nl ? '<span class="chip">' + nl + '-loop</span>' : '';
+    const sym = item.diagram && item.diagram.symmetry > 1 ? '<span class="chip" title="symmetry factor">S = 1/' + item.diagram.symmetry + '</span>' : '';
+    const gauge = item.diagram && item.diagram.gauge === 'feynman' ? '<span class="chip" title="\'t Hooft–Feynman gauge">R<sub>ξ</sub></span>' : '';
     const extra = item.extra ? '<span class="chip">extra ' + (item.side === 'both' ? 'in + out' : item.side) + ': ' + item.extra + '</span>' : '';
-    return '<span class="chips">' + (item.order ? '<span class="chip ord" title="coupling order">' + item.order + '</span>' : '') + inter + loops + extra + '</span>';
+    return '<span class="chips">' + (item.order ? '<span class="chip ord" title="coupling order">' + item.order + '</span>' : '') + inter + loops + sym + gauge + extra + '</span>';
 }
 
 function cardHTML(item, sec, idx, view) {
@@ -167,7 +170,7 @@ function cardHTML(item, sec, idx, view) {
         + (coloured ? '<div class="vtabs" role="tablist"><button type="button" class="on" data-view="colour">Diagram</button><button type="button" data-view="flow">Colour flow</button></div>' : '')
         + '<div class="svgbox" data-mode="' + (coloured ? 'colour' : 'plain') + '"></div>'
         + notesHTML(item.notes, false)
-        + '<div class="acts">' + (item.noLoops ? '' : '<button type="button" class="btn" data-act="loops" title="Open this diagram in the loop explorer">Add loops</button>')
+        + '<div class="acts">' + (item.noLoops ? '' : '<button type="button" class="btn" data-act="loops" title="Open this diagram in the loop explorer. Tip: right-click any vertex or line of the diagram to generate a loop exactly there.">Add loops</button>')
         + '<button type="button" class="btn" data-act="open">Enlarge</button><button type="button" class="btn" data-act="copy" title="Copy the SVG markup">Copy SVG</button></div>'
         + '</figure>';
 }
@@ -242,6 +245,7 @@ export function openDiagramModal(titleHTML, item, view = {}) {
         : '<div class="svgbox" data-mode="plain">' + svgFor(item, 'plain') + '</div>';
     root.innerHTML = '<div class="modal"><div class="modal-panel" role="dialog" aria-modal="true"><button type="button" class="modal-close" aria-label="Close">×</button><div class="mt">' + titleHTML + '</div>' + body + notesHTML(item.notes, true) + '</div></div>';
     wireTips(root, () => item, view);
+    wireContext(root, () => item);
     const close = () => { document.removeEventListener('keydown', onKey, true); host.remove(); };
     const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
     document.addEventListener('keydown', onKey, true);
@@ -259,6 +263,33 @@ export function mountDiagram(host, svg, diagram) {
 }
 
 // ------------------------------------------------------------------ the page
+
+// Right-click (or long-press) a vertex or line of a card: open the loop explorer with the
+// "generate loop here" menu on that element.
+function wireContext(root, itemOf) {
+    root._ctxItemOf = itemOf;
+    if (root._ctxWired) return;
+    root._ctxWired = true;
+    const open = (ev, t) => {
+        const it = root._ctxItemOf(t);
+        if (!it || it.noLoops || !it.ini || !it.fin) return false;
+        ensureLayout(it.diagram);
+        openLoopExplorerIds(it.ini, it.fin, it.diagram, { target: t.dataset.v ? { v: t.dataset.v } : { e: t.dataset.e }, gauge: it.diagram.gauge });
+        return true;
+    };
+    root.addEventListener('contextmenu', (ev) => {
+        const t = ev.target.closest && ev.target.closest('.svgbox [data-v], .svgbox [data-e]');
+        if (t && open(ev, t)) ev.preventDefault();
+    });
+    let press = null;
+    root.addEventListener('pointerdown', (ev) => {
+        if (ev.pointerType !== 'touch') return;
+        const t = ev.target.closest && ev.target.closest('.svgbox [data-v], .svgbox [data-e]');
+        if (!t) return;
+        press = setTimeout(() => { press = null; open(ev, t); }, 600);
+    });
+    ['pointerup', 'pointercancel', 'pointermove'].forEach(k => root.addEventListener(k, () => { if (press) { clearTimeout(press); press = null; } }));
+}
 
 // ShadowRoot has no onclick property, so swap a single listener instead
 function onClick(root, fn) {
@@ -324,21 +355,31 @@ export function renderLoopResults(container, data, view = {}) {
         if (lists.loops.length) {
             const groups = {};
             lists.loops.forEach(it => { (groups[it.group] = groups[it.group] || []).push(it); });
-            const ordered = Object.entries(groups).sort((a, b) => (a[1][0].npoint || 0) - (b[1][0].npoint || 0) || (/External/.test(a[0]) ? 1 : 0) - (/External/.test(b[0]) ? 1 : 0));
-            h += '<section class="sec"><h3>One-loop diagrams</h3><p class="lede">' + lists.loops.length + ' one-loop diagram' + (lists.loops.length === 1 ? '' : 's') + (lists.tree.length ? ', every first-order correction to the process' : '; the process starts at one loop') + '. Tadpoles are not drawn' + (data.loopExternal ? ', and ' + data.loopExternal + ' self-energies on external legs are left out because the S-matrix amputates them' : '') + (data.loopDropped ? '; ' + data.loopDropped + ' more vanish by colour conservation' : '') + (data.loopTruncated ? '. The list stopped at the time limit' : '') + '.</p>'
+            const last = g => /External|Tadpole/.test(g) ? 2 : /reducible/.test(g) ? 1 : 0;
+            const ordered = Object.entries(groups).sort((a, b) => last(a[0]) - last(b[0]) || (a[1][0].npoint || 0) - (b[1][0].npoint || 0) || (/non-planar/.test(a[0]) ? 1 : 0) - (/non-planar/.test(b[0]) ? 1 : 0));
+            const L = data.loopOrder || 1, word = ['', 'One', 'Two', 'Three'][L] || L;
+            const parts = [];
+            parts.push(lists.loops.length + ' ' + word.toLowerCase() + '-loop diagram' + (lists.loops.length === 1 ? '' : 's') + (lists.tree.length ? (L === 1 ? ', every first-order correction to the process' : ', every correction at this order') : '; the process starts at one loop'));
+            parts.push('built from ' + (data.loopTopologies || 'all') + ' graph topologies and every particle assignment the vertex table allows, ' + (data.gauge === 'feynman' ? 'in ’t Hooft–Feynman gauge (Goldstone bosons and electroweak ghosts included)' : 'in unitary gauge'));
+            parts.push(data.loopTadpoles ? 'Higgs tadpoles are included (photon, Z and gluon tadpoles vanish)' : 'tadpoles are left out (they are cancelled by the tadpole counterterm)');
+            parts.push(data.loopExternalShown ? 'self-energies on external legs are included' : 'self-energies on external legs are left out because the S-matrix amputates them');
+            if (data.loopDropped) parts.push(data.loopDropped + ' more vanish by colour conservation');
+            if (data.loopTruncated) parts.push('<b>the list stopped at the time or size limit</b>');
+            h += '<section class="sec"><h3>' + word + '-loop diagrams</h3><p class="lede">' + parts.join('; ') + '. Right-click any vertex or line of a diagram to generate a further loop exactly there.</p>'
                 + filtersHTML('loops', lists.loops)
                 + ordered.map(([g, items], gi) => {
                     const vis = visible('loops', items);
                     if (!vis.length) return '';
                     return '<details class="grp"' + (gi === 0 ? ' open' : '') + ' data-grp="loops:' + esc(g) + '"><summary>' + esc(g) + '<span class="cnt">' + vis.length + '</span></summary><div class="body">' + sectionCards('loops', vis, 'loops:' + g) + '</div></details>';
                 }).join('') + '</section>';
-        } else if (data.loopNote) h += '<section class="sec"><h3>One-loop diagrams</h3><div class="note">' + data.loopNote + '</div></section>';
+        } else if (data.loopNote) h += '<section class="sec"><h3>' + (['', 'One', 'Two', 'Three'][data.loopOrder || 1]) + '-loop diagrams</h3><div class="note">' + data.loopNote + '</div></section>';
         if (lists.extended.length) {
             h += '<section class="sec"><h3>With additional external particles</h3><p class="lede">Nothing connects the particles as given. These diagrams do, with the added legs highlighted; each one passed the same selection rules.</p>' + sectionCards('extended', lists.extended, 'extended') + '</section>';
         }
         root.innerHTML = h;
         lazy();
         wireTips(root, el => itemOf(el), view);
+        wireContext(root, el => itemOf(el));
     };
     const itemOf = (el) => { const c = el.closest && el.closest('.lcard'); return c ? lists[c.dataset.sec][+c.dataset.i] : null; };
     const lazy = () => {
@@ -431,6 +472,7 @@ export function renderDiscovery(container, data, view = {}) {
         }
     });
     wireTips(root, el => itemOf(el), view);
+    wireContext(root, el => itemOf(el));
 }
 
 export function renderMessage(container, html) {

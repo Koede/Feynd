@@ -208,6 +208,7 @@ function layoutWithSpectators(bases, ctx) {
         order = order.filter(i => has(bases[i])).concat(order.filter(i => !has(bases[i])));
     }
     const PAD = 128, STEP = 46;
+    let best = null, tried = 0;
     for (const bi of order.slice(0, 12)) {
         if (Date.now() > env.budget.until) break;
         const d0 = FV.cloneDiag(bases[bi]);
@@ -249,10 +250,14 @@ function layoutWithSpectators(bases, ctx) {
             d.colour = { sol };
             d.kind = 'hadron';
             d.label = 'Quark level';
-            return { diagram: d, ini: ctx.ini, fin: ctx.fin, strength: bases[bi].strength || 0 };
+            // keep the drawing with the fewest crossings that carry no meaning
+            const bad = FV.crossingsDrawn(d).filter(([a, b]) => !FV.sameLine(d, a, b)).length;
+            if (!best || bad < best.bad) best = { bad, res: { diagram: d, ini: ctx.ini, fin: ctx.fin, strength: bases[bi].strength || 0 } };
+            if (bad === 0) return best.res;
+            if (++tried > 40) return best.res;
         }
     }
-    return null;
+    return best ? best.res : null;
 }
 
 /**

@@ -527,21 +527,78 @@ function splitSides(seq, nIn) {
   const pi = rot.filter(x => x < nIn), po = rot.filter(x => x >= nIn).reverse();
   return { pi, po };
 }
+// Which planar side assignment to draw. Candidates come from the graph's embeddings
+// (cyclic orders of the legs with the initial ones together). The order the user typed
+// is the reference: if a planar embedding has it, use it; if one has it up to swapping
+// identical particles on one side, draw the reference anyway, so the two identical lines
+// cross: that crossing is the conventional picture of the exchange diagram. Otherwise
+// take the planar order closest to the reference, so the labels move as little as possible.
+function inversions(a, ref) {
+  const pos = new Map(ref.map((x, i) => [x, i])); let n = 0;
+  for (let i = 0; i < a.length; i++) for (let j = i + 1; j < a.length; j++) if (pos.get(a[i]) > pos.get(a[j])) n++;
+  return n;
+}
+function chooseSides(d, cands) {
+  const nIn = d.initial.length, nOut = d.final.length;
+  const refPi = [...Array(nIn).keys()], refPo = [...Array(nOut).keys()].map(i => nIn + i);
+  const pid = i => i < nIn ? d.initial[i] : d.final[i - nIn];
+  const eq = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+  const eqMod = (a, b) => a.length === b.length && a.every((x, i) => pid(x) === pid(b[i]));
+  if (!cands.length) return null;
+  if (cands.some(c => eq(c.pi, refPi) && eq(c.po, refPo))) return { pi: refPi, po: refPo };
+  // the reference differs from a planar order only by swapping neighbouring identical legs:
+  // then the crossing is between those two identical lines alone
+  const adjSwap = (c, r) => {
+    if (!eqMod(c, r)) return false;
+    for (let i = 0; i < c.length; i++) {
+      if (c[i] === r[i]) continue;
+      if (i + 1 < c.length && c[i] === r[i + 1] && c[i + 1] === r[i]) { i++; continue; }
+      return false;
+    }
+    return true;
+  };
+  const ex = cands.find(c => adjSwap(c.pi, refPi) && adjSwap(c.po, refPo));
+  if (ex) return { pi: refPi, po: refPo, exchange: true, planar: { pi: ex.pi, po: ex.po } };
+  let best = null, bd = Infinity;
+  cands.forEach(c => { const dd = inversions(c.pi, refPi) + inversions(c.po, refPo); if (dd < bd) { bd = dd; best = c; } });
+  return best;
+}
+FV.chooseSides = chooseSides;
+function applySides(d, best) {
+  d.verts.forEach(v => {
+    if (v.kind !== 'ext' || v.extIdx === undefined || v.extIdx < 0) return;
+    const arr = v.side === 'in' ? best.pi : best.po;
+    v.slot = arr.indexOf(v.extIdx); v.nSide = arr.length;
+  });
+  d.exchangeDrawn = !!best.exchange;
+  if (best.planar) d.planarSides = best.planar; else delete d.planarSides;
+}
+FV.applySides = applySides;
+/** Side candidates (fewest in/out transitions) from cyclic orders, mirror images included. */
+function sideCandidates(d, seqs) {
+  const nIn = d.initial.length;
+  let bestTr = Infinity; const out = [], seen = new Set();
+  const all = [];
+  seqs.forEach(sq => { all.push(sq); all.push(sq.slice().reverse()); });
+  all.forEach(sq => { const t = transitions(sq, nIn); if (t < bestTr) bestTr = t; });
+  // more than two in/out transitions: the initial legs cannot sit together on the left
+  // without a crossing (e.g. the crossed box), so one crossing is unavoidable
+  d.needsCross = bestTr > 2 && nIn > 0 && nIn < seqs[0].length;
+  all.forEach(sq => {
+    if (transitions(sq, nIn) !== bestTr) return;
+    const sd = splitSides(sq, nIn);
+    if (d.orderOK && !d.orderOK(sd.pi, sd.po)) return;
+    const k = sd.pi.join(',') + '|' + sd.po.join(',');
+    if (!seen.has(k)) { seen.add(k); out.push(sd); }
+  });
+  return out;
+}
+FV.sideCandidates = sideCandidates;
 function orderExternals(d) {
   const nIn = d.initial.length, nOut = d.final.length;
   let best = null;
   const cyc = cyclicOrders(d);
-  if (cyc && cyc.length) {
-    let bestTr = Infinity;
-    for (const seq of cyc) {
-      const tr = transitions(seq, nIn);
-      if (tr > bestTr) continue;
-      const sides = splitSides(seq, nIn);
-      if (d.orderOK && !d.orderOK(sides.pi, sides.po)) continue;
-      if (tr < bestTr) { bestTr = tr; best = sides; }
-      if (tr <= 2) break;
-    }
-  }
+  if (cyc && cyc.length) best = chooseSides(d, sideCandidates(d, cyc));
   if (!best) {
     const ins = [], outs = [];
     for (let i = 0; i < nIn; i++) ins.push(i);
@@ -551,11 +608,7 @@ function orderExternals(d) {
       outer: for (const pi of perms(ins)) for (const po of perms(outs)) if (d.orderOK(pi, po)) { best = { pi, po }; break outer; }
     }
   }
-  d.verts.forEach(v => {
-    if (v.kind !== 'ext' || v.extIdx === undefined || v.extIdx < 0) return;
-    const arr = v.side === 'in' ? best.pi : best.po;
-    v.slot = arr.indexOf(v.extIdx); v.nSide = arr.length;
-  });
+  applySides(d, best);
 }
 FV.orderExternals = orderExternals;
 
@@ -962,7 +1015,7 @@ function rng(seed) {
 function placeExternals(d) {
   d.verts.forEach(v => {
     if (v.kind !== 'ext') return;
-    const n = v.nSide || 1, gap = n > 1 ? Math.min(150, (H - 150) / (n - 1)) : 0;
+    const n = v.nSide || 1, room = H + (d.extraRoom || 0), gap = n > 1 ? Math.min(150 + (d.extraRoom || 0) / 2, (room - 150) / (n - 1)) : 0;
     const pad = d.extPad || 84;
     v.x = v.side === 'in' ? pad : W - pad;
     v.y = H / 2 + ((v.slot || 0) - (n - 1) / 2) * gap;
@@ -993,6 +1046,22 @@ function distSeg(px, py, ax, ay, bx, by) {
 function relax(d, iters, temp0) {
   const vs = d.verts, byId = {}; vs.forEach(v => byId[v.id] = v);
   const free = vs.filter(v => !v.fixed);
+  // vertices joined to one neighbour by several lines and to exactly one other neighbour
+  const multi = new Map();
+  d.edges.forEach(e => { if (e.a === e.b) return; const k = e.a < e.b ? e.a + '|' + e.b : e.b + '|' + e.a; multi.set(k, (multi.get(k) || 0) + 1); });
+  const bubbleRuns = [];
+  vs.forEach(v => {
+    if (v.kind !== 'v') return;
+    const nb = new Map();
+    d.edges.forEach(e => { if (e.a === e.b) return; const o = e.a === v.id ? e.b : e.b === v.id ? e.a : null; if (o) nb.set(o, (nb.get(o) || 0) + 1); });
+    const many = [...nb.entries()].filter(([, c]) => c >= 2), one = [...nb.entries()].filter(([, c]) => c === 1);
+    if (many.length === 1 && one.length === 1) bubbleRuns.push([v.id, one[0][0], many[0][0]]);
+  });
+  const angAdj = new Map();
+  d.edges.forEach(e => {
+    if (e.a === e.b) return;
+    [[e.a, e.b], [e.b, e.a]].forEach(([x, y]) => { if (byId[x].kind !== 'v') return; if (!angAdj.has(x)) angAdj.set(x, []); if (!angAdj.get(x).includes(y)) angAdj.get(x).push(y); });
+  });
   for (let it = 0; it < iters; it++) {
     const temp = temp0 * (1 - it / iters) + 0.4;
     const dx = {}, dy = {}; vs.forEach(v => { dx[v.id] = 0; dy[v.id] = 0; });
@@ -1006,7 +1075,7 @@ function relax(d, iters, temp0) {
     d.edges.forEach(e => {
       const a = byId[e.a], b = byId[e.b];
       const loopy = e.lids.length && a.kind === 'v' && b.kind === 'v';
-      const L = loopy ? 86 : (a.kind === 'ext' || b.kind === 'ext') ? 120 : 104;
+      const L = loopy ? 96 : (a.kind === 'ext' || b.kind === 'ext') ? 120 : 104;
       const ux = b.x - a.x, uy = b.y - a.y, dd = Math.hypot(ux, uy) || 1, f = 0.12 * (dd - L);
       dx[a.id] += ux / dd * f; dy[a.id] += uy / dd * f; dx[b.id] -= ux / dd * f; dy[b.id] -= uy / dd * f;
     });
@@ -1019,10 +1088,39 @@ function relax(d, iters, temp0) {
         dx[v.id] += ux / l * f; dy[v.id] += uy / l * f;
       }
     }));
+    // angular resolution: lines leaving one vertex should not run (almost) together;
+    // rotate the far ends of a too-narrow pair apart
+    if (angAdj) angAdj.forEach((nb, vid) => {
+      const v = byId[vid];
+      for (let i = 0; i < nb.length; i++) for (let j = i + 1; j < nb.length; j++) {
+        const a = byId[nb[i]], b = byId[nb[j]];
+        if (a === b) continue;
+        const ax = a.x - v.x, ay = a.y - v.y, bx = b.x - v.x, by = b.y - v.y;
+        const la = Math.hypot(ax, ay) || 1, lb = Math.hypot(bx, by) || 1;
+        const cos = (ax * bx + ay * by) / (la * lb), ang = Math.acos(Math.max(-1, Math.min(1, cos)));
+        if (ang > 0.62) continue;
+        const f = (0.62 - ang) * 26, cr = ax * by - ay * bx >= 0 ? 1 : -1;
+        // perpendicular directions pushing a and b away from each other around v
+        const pax = ay / la * cr, pay = -ax / la * cr, pbx = -by / lb * cr, pby = bx / lb * cr;
+        if (!a.fixed) { dx[a.id] += pax * f; dy[a.id] += pay * f; }
+        if (!b.fixed) { dx[b.id] += pbx * f; dy[b.id] += pby * f; }
+        if (!v.fixed && (a.fixed || b.fixed)) { dx[v.id] -= (pax + pbx) * f * 0.5; dy[v.id] -= (pay + pby) * f * 0.5; }
+      }
+    });
+    // a bubble (two or more lines between the same two vertices) should sit on a straight
+    // run of its propagator, so the curved lines leave the vertex away from the propagator
+    if (bubbleRuns) bubbleRuns.forEach(([vid, aid, bid]) => {
+      const v = byId[vid], a = byId[aid], b = byId[bid];
+      if (v.fixed) return;
+      const ux = b.x - a.x, uy = b.y - a.y, l2 = ux * ux + uy * uy || 1;
+      const t = ((v.x - a.x) * ux + (v.y - a.y) * uy) / l2, fx = a.x + t * ux, fy = a.y + t * uy;
+      dx[v.id] += (fx - v.x) * 0.5; dy[v.id] += (fy - v.y) * 0.5;
+    });
     free.forEach(v => {
       const m = Math.hypot(dx[v.id], dy[v.id]) || 1, s = Math.min(m, temp);
       v.x += dx[v.id] / m * s; v.y += dy[v.id] / m * s;
-      v.x = Math.max(120, Math.min(W - 120, v.x)); v.y = Math.max(50, Math.min(H - 50, v.y));
+      const xr = (d.extraRoom || 0) / 2;
+      v.x = Math.max(120, Math.min(W - 120, v.x)); v.y = Math.max(50 - xr, Math.min(H - 50 + xr, v.y));
     });
   }
 }
@@ -1040,24 +1138,175 @@ FV.crossings = function (d) {
   }
   return n;
 };
-function quality(d) {
-  let pen = 0; const es = d.edges, isx = e => vert(d, e.a).kind === 'ext' || vert(d, e.b).kind === 'ext';
+// Two lines may cross only when the crossing means something: two external lines of the
+// same particle on the same side (the exchange diagram of identical particles) or two
+// internal lines of the same particle (a crossed exchange such as the crossed box).
+// Those are penalized lightly; any other crossing heavily, so a planar drawing wins
+// whenever one exists. Crossings are found on the lines as drawn (curved parallels and
+// self-loops included).
+function sample(pts, step) {
+  const out = [pts[0]];
+  let last = pts[0];
+  for (let i = 1; i < pts.length; i++) { const p = pts[i]; if (Math.hypot(p.x - last.x, p.y - last.y) >= step || i === pts.length - 1) { out.push(p); last = p; } }
+  return out;
+}
+const isExtE = (d, e) => vert(d, e.a).kind === 'ext' || vert(d, e.b).kind === 'ext';
+function extKey(d, e) { const v = vert(d, e.a).kind === 'ext' ? vert(d, e.a) : vert(d, e.b); return v.side + ':' + v.pid; }
+function sameLine(d, a, b) {
+  const ea = isExtE(d, a), eb = isExtE(d, b);
+  if (ea && eb) return extKey(d, a) === extKey(d, b);
+  if (!ea && !eb) { const fa = a.p === 'W-' ? 'W+' : FV.flowId(a.p), fb = b.p === 'W-' ? 'W+' : FV.flowId(b.p); return fa === fb; }
+  return false;
+}
+// Light geometry of every line as drawn: straight lines are their two ends, parallel lines
+// are the same quadratic curves edgeGeom draws, self-loops are circles. Each entry also
+// gives the direction the line leaves each end, for the angle check.
+// direction for a self-loop: away from the vertex's other lines; when they cancel (a line
+// passing straight through), perpendicular to them, on the side with more room
+function selfLoopAngle(d, A, sx, sy) {
+  if (Math.hypot(sx, sy) > 0.35) return Math.atan2(-sy, -sx);
+  const e = d.edges.find(q => q.a !== q.b && (q.a === A.id || q.b === A.id));
+  if (!e) return A.y > H / 2 ? Math.PI / 2 : -Math.PI / 2;
+  const o = vert(d, e.a === A.id ? e.b : e.a), t = Math.atan2(o.y - A.y, o.x - A.x);
+  const c1 = t + Math.PI / 2, c2 = t - Math.PI / 2;
+  const room = c => { const x = A.x + Math.cos(c) * 40, y = A.y + Math.sin(c) * 40; return Math.min(...d.verts.filter(v => v !== A).map(v => Math.hypot(v.x - x, v.y - y))); };
+  return room(c1) >= room(c2) ? c1 : c2;
+}
+FV.selfLoopAngle = selfLoopAngle;
+function linesOf(d) {
+  const groups = {}, out = {};
+  const selfBy = {};
+  d.edges.forEach(e => {
+    if (e.a === e.b) { (selfBy[e.a] = selfBy[e.a] || []).push(e); return; }
+    const k = e.a < e.b ? e.a + '|' + e.b : e.b + '|' + e.a; (groups[k] = groups[k] || []).push(e);
+  });
+  Object.keys(groups).forEach(k => {
+    const es = groups[k], [ca, cb] = k.split('|'), A = vert(d, ca), B = vert(d, cb);
+    const dx = B.x - A.x, dy = B.y - A.y, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
+    es.forEach((e, i) => {
+      const off = es.length === 1 ? 0 : (i - (es.length - 1) / 2) * 2 * Math.max(0.36 * L, 16);
+      let pts;
+      if (!off) pts = [A, B];
+      else {
+        const cx = (A.x + B.x) / 2 + nx * 2 * off, cy = (A.y + B.y) / 2 + ny * 2 * off;
+        pts = [];
+        for (let j = 0; j <= 12; j++) { const t = j / 12, u = 1 - t; pts.push({ x: u * u * A.x + 2 * u * t * cx + t * t * B.x, y: u * u * A.y + 2 * u * t * cy + t * t * B.y }); }
+      }
+      if (e.a !== ca) pts = pts.slice().reverse();
+      out[e.id] = pts;
+    });
+  });
+  Object.keys(selfBy).forEach(vid => {
+    const A = vert(d, vid);
+    let sx = 0, sy = 0;
+    d.edges.forEach(e => { if (e.a === e.b) return; const o = e.a === vid ? vert(d, e.b) : e.b === vid ? vert(d, e.a) : null; if (o) { const l = Math.hypot(o.x - A.x, o.y - A.y) || 1; sx += (o.x - A.x) / l; sy += (o.y - A.y) / l; } });
+    const base = selfLoopAngle(d, A, sx, sy);
+    selfBy[vid].forEach((e, i, arr) => {
+      const ang = base + (i - (arr.length - 1) / 2) * 1.1, r = 24, cx = A.x + Math.cos(ang) * r, cy = A.y + Math.sin(ang) * r, pts = [];
+      for (let j = 0; j <= 16; j++) { const t = ang + Math.PI + 2 * Math.PI * j / 16; pts.push({ x: cx + r * Math.cos(t), y: cy + r * Math.sin(t) }); }
+      out[e.id] = pts;
+    });
+  });
+  return out;
+}
+function crossingsDrawn(d) {
+  const lines = linesOf(d), es = d.edges, polys = es.map(e => lines[e.id]);
+  const ends = es.map(e => [vert(d, e.a), vert(d, e.b)]);
+  const list = [];
+  const near = (p, vs) => vs.some(v => Math.hypot(p.x - v.x, p.y - v.y) < 13);
   for (let i = 0; i < es.length; i++) for (let j = i + 1; j < es.length; j++) {
-    const a = es[i], b = es[j];
-    if (a.a === b.a || a.a === b.b || a.b === b.a || a.b === b.b) continue;
-    if (segX(vert(d, a.a), vert(d, a.b), vert(d, b.a), vert(d, b.b))) pen += (isx(a) || isx(b)) ? 1500 : 1000;
+    const shared = ends[i].filter(v => ends[j].includes(v));
+    const pa = polys[i], pb = polys[j];
+    if (shared.length && pa.length === 2 && pb.length === 2) continue;   // two straight lines from one vertex
+    let hit = false;
+    for (let k = 0; k < pa.length - 1 && !hit; k++) {
+      const a1 = pa[k], a2 = pa[k + 1];
+      if (shared.length && (near(a1, shared) || near(a2, shared))) continue;
+      for (let l = 0; l < pb.length - 1; l++) {
+        const b1 = pb[l], b2 = pb[l + 1];
+        if (shared.length && (near(b1, shared) || near(b2, shared))) continue;
+        if (segX(a1, a2, b1, b2)) { hit = true; break; }
+      }
+    }
+    if (hit) list.push([es[i], es[j]]);
   }
+  return list;
+}
+FV.crossingsDrawn = crossingsDrawn;
+FV._quality = d => quality(d);
+FV.sameLine = sameLine;
+function quality(d) {
+  let pen = 0; const parts = {}; const add = (k, x) => { parts[k] = (parts[k] || 0) + x; pen += x; };
+  crossingsDrawn(d).forEach(([a, b]) => { add('cross', sameLine(d, a, b) ? 260 : (isExtE(d, a) || isExtE(d, b)) ? 1500 : 1000); });
   const vs = d.verts;
-  for (let i = 0; i < vs.length; i++) for (let j = i + 1; j < vs.length; j++) { const g = Math.hypot(vs[i].x - vs[j].x, vs[i].y - vs[j].y); if (g < 30) pen += (30 - g) * 8; }
+  for (let i = 0; i < vs.length; i++) for (let j = i + 1; j < vs.length; j++) { const g = Math.hypot(vs[i].x - vs[j].x, vs[i].y - vs[j].y); if (g < 34) add('close', (34 - g) * 8); }
+  const lines = linesOf(d);
   vs.forEach(v => d.edges.forEach(e => {
     if (e.a === v.id || e.b === v.id) return;
-    const a = vert(d, e.a), b = vert(d, e.b), s = distSeg(v.x, v.y, a.x, a.y, b.x, b.y);
-    if (s.d < 18) pen += (18 - s.d) * 20;
+    const pts = lines[e.id];
+    let m = Infinity;
+    for (let k = 0; k < pts.length - 1; k++) m = Math.min(m, distSeg(v.x, v.y, pts[k].x, pts[k].y, pts[k + 1].x, pts[k + 1].y).d);
+    if (m < 20) add('nearline', (20 - m) * 20);
   }));
+  // angles between the lines leaving a vertex, and very short propagators
+  vs.forEach(v => {
+    if (v.kind !== 'v') return;
+    const dirs = [];
+    d.edges.forEach(e => {
+      if (e.a === e.b) return;
+      if (e.a !== v.id && e.b !== v.id) return;
+      const pts = lines[e.id], n = pts.length, q = e.a === v.id ? pts[1] : pts[n - 2];
+      dirs.push(Math.atan2(q.y - v.y, q.x - v.x));
+    });
+    for (let i = 0; i < dirs.length; i++) for (let j = i + 1; j < dirs.length; j++) {
+      let a = Math.abs(dirs[i] - dirs[j]) * 180 / Math.PI; if (a > 180) a = 360 - a;
+      if (a < 28) add('angle', (28 - a) * 25);
+    }
+  });
+  d.edges.forEach(e => {
+    const A = vert(d, e.a), B = vert(d, e.b);
+    if (e.a === e.b) return;
+    const len = Math.hypot(A.x - B.x, A.y - B.y);
+    if (A.kind === 'v' && B.kind === 'v' && len < 48) add('short', (48 - len) * 10);
+    // time runs left to right: an incoming line must reach its vertex to its right, an outgoing one to its left
+    const ex = A.kind === 'ext' ? A : B.kind === 'ext' ? B : null;
+    if (ex) { const iv = ex === A ? B : A; if (ex.side === 'in' ? iv.x < ex.x + 50 : iv.x > ex.x - 50) add('back', 600); }
+  });
+  d._qparts = parts;
   return pen;
 }
 // returns the number of crossings left in the chosen layout
 FV.layoutDiag = function (d) {
+  // exchange drawing: lay the graph out in its planar order, then swap the identical legs
+  // back to the typed order, so the only crossing is between those two identical lines
+  if (d.exchangeDrawn && d.planarSides) {
+    const ref = d.verts.filter(v => v.kind === 'ext').map(v => [v, v.slot]);
+    d.verts.forEach(v => { if (v.kind === 'ext') { const arr = v.side === 'in' ? d.planarSides.pi : d.planarSides.po; v.slot = arr.indexOf(v.extIdx); } });
+    const ex = d.exchangeDrawn; d.exchangeDrawn = false;
+    layoutCore(d);
+    d.exchangeDrawn = ex;
+    const planarPos = d.verts.map(v => [v.x, v.y]);
+    ref.forEach(([v, sl]) => { v.slot = sl; });
+    placeExternals(d);
+    const clean = () => crossingsDrawn(d).every(([a, b]) => sameLine(d, a, b));
+    if (!clean()) {
+      // let the inner vertices settle around the swapped legs, then try once more from scratch
+      relax(d, 160, 8);
+      if (!clean()) { layoutCore(d); }
+      if (!clean()) {
+        // no clean exchange picture: draw the planar order instead (no crossing at all)
+        d.verts.forEach((v, i) => { v.x = planarPos[i][0]; v.y = planarPos[i][1]; });
+        d.verts.forEach(v => { if (v.kind === 'ext') { const arr = v.side === 'in' ? d.planarSides.pi : d.planarSides.po; v.slot = arr.indexOf(v.extIdx); } });
+        placeExternals(d);
+        d.exchangeDrawn = false;
+      }
+    }
+    d.layoutQuality = quality(d);
+    return crossingsDrawn(d).length;
+  }
+  return layoutCore(d);
+};
+function layoutCore(d) {
   placeExternals(d); seedInternal(d);
   const rand = rng(d.nid * 7919 + d.edges.length), base = d.verts.map(v => [v.x, v.y]);
   let best = null, bestQ = Infinity;
@@ -1071,9 +1320,33 @@ FV.layoutDiag = function (d) {
     if (q < bestQ) { bestQ = q; best = d.verts.map(v => [v.x, v.y]); }
     if (bestQ < 1) break;
   }
+  // still crossing (common for inserted loops seeded at one point): restart from
+  // scattered positions, which lets planar loop structures unfold
+  if (bestQ >= 250) {
+    const extra = Math.min(48, 10 + 4 * d.verts.filter(v => v.kind === 'v').length);
+    for (let k = 0; k < extra && bestQ >= 250; k++) {
+      d.verts.forEach(v => { if (v.fixed) return; v.x = 140 + rand() * (W - 280); v.y = 70 + rand() * (H - 140); });
+      relax(d, 320, 30);
+      const q = quality(d);
+      if (q < bestQ) { bestQ = q; best = d.verts.map(v => [v.x, v.y]); }
+    }
+  }
   d.verts.forEach((v, i) => { v.x = best[i][0]; v.y = best[i][1]; });
-  return FV.crossings(d);
-};
+  d.layoutQuality = bestQ;
+  // crowded (short lines, narrow angles): give the externals more vertical room and keep
+  // whichever drawing scores better
+  const nv = d.verts.filter(v => v.kind === 'v').length;
+  if (bestQ > 120 && nv >= 4 && !d._roomTried) {
+    const keep = d.verts.map(v => [v.x, v.y]), q0 = bestQ, r0 = d.extraRoom || 0;
+    d._roomTried = true;
+    d.extraRoom = r0 + Math.min(220, 40 * (nv - 3));
+    d.verts.forEach(v => { if (!v.fixed) { delete v.x; delete v.y; } });
+    layoutCore(d);
+    if (d.layoutQuality >= q0) { d.extraRoom = r0; d.verts.forEach((v, i) => { v.x = keep[i][0]; v.y = keep[i][1]; }); placeExternals(d); d.verts.forEach((v, i) => { v.x = keep[i][0]; v.y = keep[i][1]; }); d.layoutQuality = q0; }
+    delete d._roomTried;
+  }
+  return crossingsDrawn(d).length;
+}
 })();
 (function () {
 'use strict';
@@ -1147,14 +1420,35 @@ function arrowAt(c, forward, f) {
 
 // geometry for every edge: centerline, grouped by endpoints so parallel lines bow apart
 function edgeGeom(d) {
-  const groups = {};
-  d.edges.forEach(e => { const k = e.a < e.b ? e.a + '|' + e.b : e.b + '|' + e.a; (groups[k] = groups[k] || []).push(e); });
-  const geo = {};
+  const groups = {}, geo = {};
+  // self-loops (a line that starts and ends on one vertex): a circle on the side away
+  // from the vertex's other lines; several on one vertex fan out
+  const selfBy = {};
+  d.edges.forEach(e => { if (e.a === e.b) (selfBy[e.a] = selfBy[e.a] || []).push(e); });
+  Object.keys(selfBy).forEach(vid => {
+    const A = vert(d, vid);
+    let sx = 0, sy = 0;
+    d.edges.forEach(e => { if (e.a === e.b) return; const o = e.a === vid ? vert(d, e.b) : e.b === vid ? vert(d, e.a) : null; if (o) { const l = Math.hypot(o.x - A.x, o.y - A.y) || 1; sx += (o.x - A.x) / l; sy += (o.y - A.y) / l; } });
+    const base = FV.selfLoopAngle(d, A, sx, sy);
+    selfBy[vid].forEach((e, i, arr) => {
+      const ang = base + (i - (arr.length - 1) / 2) * 1.1, r = 24, cx = A.x + Math.cos(ang) * r, cy = A.y + Math.sin(ang) * r;
+      const N = 120, pts = [];
+      let s = 0;
+      for (let j = 0; j <= N; j++) {
+        const t = ang + Math.PI + 2 * Math.PI * j / N;
+        const p = { x: cx + r * Math.cos(t), y: cy + r * Math.sin(t) };
+        if (j) s += Math.hypot(p.x - pts[j - 1].x, p.y - pts[j - 1].y);
+        p.s = s; pts.push(p);
+      }
+      geo[e.id] = { pts: setTangents(pts), len: s, off: 0, flip: false, selfLoop: true };
+    });
+  });
+  d.edges.forEach(e => { if (e.a === e.b) return; const k = e.a < e.b ? e.a + '|' + e.b : e.b + '|' + e.a; (groups[k] = groups[k] || []).push(e); });
   Object.keys(groups).forEach(k => {
     const es = groups[k], ca = k.split('|')[0], cb = k.split('|')[1], A = vert(d, ca), B = vert(d, cb);
     const chord = Math.hypot(B.x - A.x, B.y - A.y);
     es.forEach((e, i) => {
-      const off = es.length === 1 ? 0 : (i - (es.length - 1) / 2) * 2 * Math.max(0.46 * chord, 18);
+      const off = es.length === 1 ? 0 : (i - (es.length - 1) / 2) * 2 * Math.max(0.36 * chord, 16);
       let c = centerline(A, B, off);
       if (e.a !== ca) { c.pts.reverse(); c.pts.forEach((p, ii) => p.s = c.len - p.s); c.pts = setTangents(c.pts); }
       geo[e.id] = Object.assign(c, { off, flip: e.a !== ca });

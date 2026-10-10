@@ -1,5 +1,166 @@
 # Changelog
 
+## Loops on the page, "Generate loop here", live renormalization, and drawing without meaningless crossings
+
+### Loop lists on the page now come from the general engine (`js/loops/build.js`, `loops.html`, `js/loopchannel.js`)
+
+- `buildRuleDiagrams` calls `loopDiagrams()` from `graph.js`. The ring-based `oneLoopDiagrams()` is no longer used by the page; it stays in `oneloop.js` as an independent cross-check in the tests.
+- New controls appear next to *Allow loop diagrams* and only while it is on:
+  - **Loops** (1 or 2).
+  - **Gauge**:
+    - unitary;
+    - 't Hooft–Feynman, which adds Goldstone bosons and electroweak ghosts.
+  - **tadpoles**: Higgs tadpoles. Photon, Z and gluon tadpoles vanish and are never listed.
+  - **external-leg loops**: self-energies on external legs, which the S-matrix amputates.
+
+  All four are saved with the other preferences and passed to the worker. Discovery passes the gauge on as well.
+- Loop-induced processes always start at one loop, whatever order is selected.
+- The results section is titled by loop order. It states:
+  - how many topologies were labelled;
+  - the gauge;
+  - whether tadpoles and external-leg corrections are included;
+  - how many diagrams vanish by colour;
+  - whether a limit was hit.
+- Groups are ordered by number of legs. Non-planar groups come after planar ones, and reducible, tadpole and external-leg groups come last.
+- Cards show a symmetry-factor chip (S = 1/n) and an R_ξ chip for Feynman-gauge diagrams. The loop count is now read from the graph (E − V + 1).
+- The legend gains the Goldstone (dash-dot) and ghost (dotted) line styles.
+
+### New: "Generate loop here" (`js/loops/insert.js`)
+
+Every option is computed when you ask for it: the diagram becomes a graph, the move is applied, the new lines are left free, and `labelAll` finds every particle assignment the vertex table allows. Results are deduplicated by canonical form and dropped when colour conservation forbids them.
+
+- **Vertex correction.** The vertex is replaced by every one-loop 1PI piece with the same legs: a triangle, or a bubble with a quartic vertex (a box and the like for a quartic vertex).
+  - Example: at e e γ there are 4: W ν, e γ, e Z, e H.
+- **Self-energy on a line or external leg.** Bubbles and seagulls. One side of the line may change particle where the rest of the diagram stays valid:
+  - γ–Z mixing is allowed;
+  - flavour-changing fermion self-energies are allowed;
+  - vector–scalar mixing such as Z–H is dropped, because it vanishes by CP.
+- **Tadpole on a line or a cubic vertex.** Only Higgs-type stems survive. The menu says how many photon, Z or gluon tadpoles were left out because they vanish.
+- **New propagator between two points.** "Start a loop line here…" then "Close the loop line here".
+  - The lines on every simple path between the two points may change particle (for example e → ν when a W is added); all other lines are kept.
+  - Joining two points on the same line gives the self-energy move.
+- `menuFor(d, target)` lists the moves a point allows. A quartic vertex is already full, so it only offers vertex corrections.
+
+### Loop explorer rebuilt around it (`js/loops/explorer.js`)
+
+**Choosing where a loop goes**
+- **Right-click** (or **long-press** on touch) any vertex or line to open a context menu.
+- **Left-click** selects the point and shows the same choices under the diagram, which keeps it keyboard-reachable.
+- Esc closes the menu, then cancels a pending loop line, then closes the explorer.
+
+**Picking an option**
+- The options appear as a gallery of thumbnails, paged by 24, each with its topology name, loop content, symmetry factor and divergence degree. Click one to insert it.
+- The diagram is then laid out again from its previous positions, and the statistics and renormalization are recomputed.
+
+**Other controls**
+- A gauge selector controls which model the insertions use.
+- Undo and reset are kept, with a limit of four loops.
+
+**Results-list shortcut**
+- Right-clicking a vertex or line on any result card, or in the enlarged view, opens the explorer with the menu already at that element.
+
+**Statistics shown**
+- Couplings, vertices, internal lines, loops, symmetry factor and loop sign.
+
+### New: renormalization of any diagram (`js/loops/renorm.js`)
+
+For every one-particle-irreducible piece of the diagram, the report gives:
+
+- **Divergence and counterterm.** The superficial degree D, and what removes the divergence: a tree-level propagator or vertex counterterm, nothing because it converges, or nothing because it is loop-induced and finite.
+- **One-loop pieces.** The explicit QED and QCD counterterm constants and the electroweak on-shell conditions (`FV.ctInfo`). Seagull self-energies and tadpoles have their own text; tadpoles explain the δt counterterm and the Fleischer–Jegerlehner alternative.
+- **Multi-loop pieces.**
+  - The genuine one-loop subdiagrams: cycles with no other line joining two of their vertices.
+  - Each one's legs and D, and whether it is a divergent propagator or vertex subdivergence.
+  - The BPHZ statement: each divergent subdiagram is cancelled by a counterterm diagram in which it is replaced by its one-loop ⊗; the local remainder is removed by the L-loop counterterm of the piece.
+  - The counterterm diagrams themselves, drawn by contracting the subgraph to a ⊗ vertex (`contract`).
+
+For the whole diagram it also gives:
+
+- the LSZ factors of the external legs;
+- the symmetry factor;
+- the sign from closed fermion and ghost loops.
+
+The conventions card describes the active gauge.
+
+### Drawing: lines cross only when the crossing means something (`js/loops/engine.js`, `graph.js`, `hadronq.js`)
+
+**Which order the external legs are drawn in**
+- The side assignment comes from the graph's planar embeddings, which keep the initial particles together on the left. Mirror images are included.
+- The order you typed is the reference:
+  - if a planar embedding has it, it is used;
+  - if one has it up to swapping two **neighbouring identical particles**, the typed order is drawn anyway, so the only crossing is between those two identical lines. This is the conventional picture of an exchange diagram such as the Møller u-channel.
+  - otherwise the planar order closest to the reference is used, so labels move as little as possible.
+  - (`FV.chooseSides`, `FV.sideCandidates`, `FV.applySides`)
+- Exchange diagrams are laid out in their planar order first and the identical legs are swapped afterwards. If that still creates any other crossing, the inner vertices are relaxed or laid out again. If neither gives a clean picture, the uncrossed planar drawing is used.
+- A crossing is unavoidable only when no embedding keeps the initial legs together, for example the crossed box, or when the graph is non-planar (`d.needsCross`).
+
+**How a candidate layout is scored**
+- The score uses the lines **as drawn**: curved parallel lines and self-loops are included (`linesOf`, `FV.crossingsDrawn`).
+- Penalties:
+  - a crossing that carries no meaning;
+  - a vertex too close to a line;
+  - an angle under 28° between lines leaving a vertex;
+  - a propagator shorter than 48 px;
+  - a leg that runs backwards in time (an incoming line must reach its vertex to the right, an outgoing one to the left).
+- Crossings between two lines of the same particle (identical external legs on one side, or identical internal lines as in a crossed box) are penalized only lightly.
+
+**How layouts are produced**
+- When a layout still has a real crossing, up to 48 restarts from scattered positions let loop structures unfold.
+- A crowded drawing is retried with more vertical room between the external legs, and the better-scoring drawing is kept.
+- New forces in the relaxation:
+  - an angular-resolution force rotates lines that leave a vertex too close together;
+  - a straightening force puts a bubble on a straight run of its propagator, so the curved lines leave the vertex away from the propagator.
+- Parallel lines bow less (0.36 × chord instead of 0.46).
+
+**Self-loops and hadrons**
+- A self-loop is drawn as a circle on the side of its vertex with the most room. When the other lines pass straight through, it is placed perpendicular to them (`selfLoopAngle`).
+- Quark-level hadron diagrams try every allowed arrangement of spectators and hadron blocks, within a budget of 40, and keep the one with the fewest meaningless crossings.
+
+**Audit**
+
+Every diagram was checked after layout for crossings that are neither between identical lines nor forced by the graph:
+
+| Set | Diagrams | Such crossings |
+|---|---|---|
+| Trees (23 processes, up to 6 legs) | 523 | 0 |
+| One-loop lists (20 processes, up to 400 each) | 3610 | 0 |
+| Two-loop lists (top 150 of each 4-leg process) | 2700 | 0 |
+| Right-click insertions (every move at every point of 8 base diagrams) | 929 | 0 |
+| Quark-level hadron diagrams | 10 | 0 |
+
+Diagrams where a crossing is forced (297 one-loop, 39 two-loop, 12 insertions) never have more than one.
+
+Angles under 20° were also counted:
+
+| Set | Before | After |
+|---|---|---|
+| One-loop | 576 of 3253 | 78 |
+| Trees | — | 1 of 523 |
+
+No line runs backwards in time and no propagator is drawn shorter than 40 px.
+
+### Other changes
+
+- `js/loops/validate.js`:
+  - self-loops are legal on interaction vertices;
+  - the loop count check uses `d.nloops`.
+- `js/loops/graph.js`: clearer two-loop names: sunset, self-energy or vertex inserted in the loop, ladder, crossed ladder, figure-eight.
+
+### Tests (116 total, all passing)
+
+- `tests/insert.test.mjs` (new, 8 tests):
+  - the e e γ vertex correction gives exactly 4 options;
+  - the photon self-energy includes seagulls, γ–Z mixing and a top bubble;
+  - there are no tadpoles on a photon line, and the Higgs tadpoles on an electron leg are valid;
+  - the e⁺–μ⁻ propagator gives boxes, including γZ boxes from relabelling;
+  - the menus offer the right moves;
+  - a two-loop diagram's report lists its one-loop subdivergence and counterterm diagram;
+  - Feynman gauge adds Goldstone vertex corrections;
+  - a layout regression: no meaningless crossings in the one-loop lists for e⁻e⁺ → e⁻e⁺, e⁻e⁻ → e⁻e⁻ and u ū → g g.
+
+  Every inserted diagram is validated and has exactly one more loop.
+- `tests/loops.test.mjs`: the planar-ordering test now asserts that trees cross only where identical particles are exchanged.
+
 ## Parameters from the Particle Data Group (PDG 2026)
 
 Every Standard Model number the code uses now comes from one module, `js/loops/pdg.js`. All values are from the Particle Data Group's *Review of Particle Physics*, 2026 edition (https://pdg.lbl.gov/2026/): the Physical Constants table, the Summary Tables and the CKM review.
