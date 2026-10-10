@@ -1,5 +1,17 @@
 # Changelog
 
+## Background: a faint sea of pair creation and annihilation
+
+- `js/vacuum.js` (new) draws a fixed, full-window canvas behind the page:
+  - A virtual fermion–antifermion pair appears at a point. The two lines bow apart, with the particle arrow forward on one and the antiparticle arrow backward on the other, and they meet again where the pair annihilates.
+  - About half the annihilations emit a boson: usually a photon, sometimes a gluon (curly), occasionally a W/Z. The boson travels a short way and creates the next pair, so the processes chain into a sea.
+  - Time runs mostly left to right, as in the diagrams.
+- **Softness:** opacity about 0.085, thin lines (1.1–1.5 px), fade-in and fade-out over seconds, and a density that scales with window area (10–46 pairs at once).
+- **Cost:** about 30 frames per second. The animation pauses while the tab is hidden, and the canvas is `pointer-events: none` and `aria-hidden`.
+- **Reduced motion:** with `prefers-reduced-motion` set, one still frame of the sea is drawn and nothing moves.
+- **Pages:** `loops.html` and `index.html` replace the old background image with a plain warm paper colour (#f6f4ec) under the canvas. `classic.html` keeps its original background. The module is imported by `js/loopchannel.js`, so the single-file build includes it.
+- **Fix:** `index.html` is re-synced with `loops.html`. It had missed the loop-option controls and the Goldstone/ghost legend entries from the previous change.
+
 ## Loops on the page, "Generate loop here", live renormalization, and drawing without meaningless crossings
 
 ### Loop lists on the page now come from the general engine (`js/loops/build.js`, `loops.html`, `js/loopchannel.js`)

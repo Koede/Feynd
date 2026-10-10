@@ -13,6 +13,7 @@ import { buildRuleDiagrams } from './loops/build.js';
 import { discover } from './loops/discovery.js';
 import { renderLoopResults, renderDiscovery, renderProgress, renderMessage } from './loops/results.js';
 import { colourKindOf, defaultColour, colourEditor, colourBadge, parseSpec, specText } from './loops/colourui.js';
+import './vacuum.js';   // the faint creation/annihilation background
 
 // ------------------------------------------------------------------ state
 const zones = { initial: [], final: [] };          // [{ sym, col }]

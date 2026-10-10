@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <link rel="stylesheet" href="style.css">
   <style>
+    /* the background is the vacuum sea drawn by js/vacuum.js on a fixed canvas */
+    body { background: #f6f4ec; background-image: none; }
     .typed-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 0 0 14px; }
     .typed-row label { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #2b6b5c; }
     .typed-row input { flex: 1 1 320px; min-width: 0; padding: 9px 12px; border-radius: 10px; border: 1px dashed #b9c3bd; background: rgba(255,255,255,.75); font: 14px ui-monospace, Menlo, Consolas, monospace; color: #1b221c; }
@@ -30,6 +32,8 @@
     .particle-chip .ceditor { margin-left: 6px; }
     .mode-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; margin-right: 12px; }
     .mode-toggle input { accent-color: #1f5e8e; }
+    .loop-opts { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 2px 10px; margin-right: 12px; border-left: 2px solid #1f5e8e33; }
+    .loop-opts[hidden] { display: none; }
     #loopResults { display: block; margin-top: 8px; }
     .channel-canvas.quark-level { height: auto; aspect-ratio: auto; background: #fff; border-radius: 8px; }
     .ef-view { display: flex; gap: 0; margin: 4px 0 10px; border: 1px solid #c9d2d8; border-radius: 999px; overflow: hidden; width: max-content; max-width: 100%; }
@@ -125,9 +129,21 @@
         </div>
 
         <div class="generate-controls">
-          <label class="mode-toggle" title="Also build one-loop diagrams: every first-order correction, and processes that only start at one loop">
+          <label class="mode-toggle" title="Also build loop diagrams: every correction at the chosen loop order, and processes that only start at one loop">
             <input type="checkbox" id="allowLoops"> <span>Allow loop diagrams</span>
           </label>
+          <span class="loop-opts" id="loopOpts" hidden>
+            <label class="multiplicity-picker" title="Loop order of the generated list. Two loops is practical for up to four external particles; for more, add loops one at a time by right-clicking a diagram.">
+              <span>Loops</span>
+              <select id="loopOrder"><option value="1">1</option><option value="2">2</option></select>
+            </label>
+            <label class="multiplicity-picker" title="Unitary gauge: physical W, Z, H only. 't Hooft–Feynman gauge: adds the Goldstone bosons and electroweak ghosts that run in loops.">
+              <span>Gauge</span>
+              <select id="loopGauge"><option value="unitary">unitary</option><option value="feynman">'t Hooft–Feynman</option></select>
+            </label>
+            <label class="mode-toggle" title="Higgs tadpoles (photon, Z and gluon tadpoles vanish and are never shown)"><input type="checkbox" id="loopTadpoles"> <span>tadpoles</span></label>
+            <label class="mode-toggle" title="Self-energies on external legs (amputated in the S-matrix; they enter through the LSZ factors)"><input type="checkbox" id="loopExternal"> <span>external-leg loops</span></label>
+          </span>
           <label class="mode-toggle" title="When nothing connects these particles, look for diagrams that use one more external particle">
             <input type="checkbox" id="allowExtras"> <span>Allow additional external particles?</span>
           </label>
@@ -169,6 +185,8 @@
           <span><svg width="30" height="12" aria-hidden="true"><path d="M0,6 Q3.75,0 7.5,6 T15,6 T22.5,6 T30,6" fill="none" stroke="#8e44ad" stroke-width="2"/></svg> Z</span>
           <span><svg width="30" height="15" aria-hidden="true"><path d="M0,7.5 C4,-2 10,-2 10,7.5 C10,17 4,17 4,7.5 C4,-2 14,-2 14,7.5 C14,17 8,17 8,7.5 C8,-2 18,-2 18,7.5 C18,17 12,17 12,7.5 C12,-2 22,-2 22,7.5 C22,17 16,17 16,7.5" fill="none" stroke="#27ae60" stroke-width="2"/></svg> Gluon</span>
           <span><svg width="30" height="10" aria-hidden="true"><line x1="0" y1="5" x2="30" y2="5" stroke="#4d5964" stroke-width="2" stroke-dasharray="7,5"/></svg> Higgs</span>
+          <span title="'t Hooft–Feynman gauge only"><svg width="30" height="10" aria-hidden="true"><line x1="0" y1="5" x2="30" y2="5" stroke="#4d5964" stroke-width="2" stroke-dasharray="2.5,3.5,7,3.5"/></svg> Goldstone</span>
+          <span><svg width="30" height="10" aria-hidden="true"><line x1="0" y1="5" x2="30" y2="5" stroke="#7a868e" stroke-width="2.4" stroke-dasharray="0.5,4.5" stroke-linecap="round"/></svg> ghost</span>
           <span><svg width="22" height="22" aria-hidden="true"><path d="M14,2 Q8,2 8,6 Q8,11 4,11 Q8,11 8,16 Q8,20 14,20" fill="none" stroke="#1f5e8e" stroke-width="2"/></svg> Hadron (valence quarks)</span>
           <span class="colour-legend"><i class="cdot" style="background:#d62828"></i><i class="cdot" style="background:#23944a"></i><i class="cdot" style="background:#1d5fd1"></i> colours · <i class="cdot" style="background:#0097a7"></i><i class="cdot" style="background:#b5179e"></i><i class="cdot" style="background:#c99400"></i> anticolours</span>
         </div>
