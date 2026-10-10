@@ -70,6 +70,7 @@ select { border: 1px solid var(--rule); background: var(--raise); border-radius:
 .ln.wboson { stroke: var(--c-w); }
 .ln.gluon { stroke: var(--c-gluon); stroke-width: 1.7; }
 .ln.higgs { stroke: var(--c-higgs); stroke-dasharray: 7 5; }
+.ln.goldstone { stroke: var(--c-higgs); stroke-dasharray: 2.5 3.5 7 3.5; }
 .ln.ghost { stroke: var(--c-ghost); stroke-dasharray: .5 4.5; stroke-width: 2.4; }
 .arw { fill: var(--ink); }
 .vx { fill: var(--ink); }

@@ -65,8 +65,8 @@ add('etabar', { sym: 'η', sub: '', sup: '', Q: 0, m: 0, kind: 'ghost', anti: 'e
 const anti = FV.anti = id => P[id].anti;
 FV.isFermion = id => !!P[id].fermion;
 FV.isGhost = id => !!P[id].ghost;
-FV.isVisible = id => !P[id].ghost;
-FV.PALETTE = ORDER.filter(id => !P[id].ghost);
+FV.isVisible = id => !P[id].ghost && !P[id].unphys;
+FV.PALETTE = null; // filled once every particle (including the R_ξ ones) is defined
 // the particle (not antiparticle) that a line flowing along its arrow represents
 FV.flowId = id => (P[id].isAnti && !P[id].selfConj && (P[id].fermion || P[id].ghost)) ? P[id].anti : id;
 
@@ -187,7 +187,94 @@ FV.vname = legs => {
   const rank = id => P[id].fermion ? (P[id].isAnti ? 1 : 0) : 2;
   return legs.slice().sort((a, b) => rank(a) - rank(b) || (a < b ? -1 : 1)).map(FV.labHTML).join(' ');
 };
-FV.vgroupLabel = g => ({ QED: 'QED', QCD: 'QCD', EW: 'Electroweak', Yukawa: 'Yukawa', Higgs: 'Higgs self/gauge' }[g] || g);
+FV.vgroupLabel = g => ({ QED: 'QED', QCD: 'QCD', EW: 'Electroweak', Yukawa: 'Yukawa', Higgs: 'Higgs self/gauge', Goldstone: 'Goldstone (R_ξ)', Ghost: 'EW ghost (R_ξ)' }[g] || g);
+
+// ---- 't Hooft–Feynman gauge (R_ξ, ξ = 1) ------------------------------------------
+// Unphysical fields that appear inside loops in a renormalizable gauge: the Goldstone
+// bosons G⁰, G± (masses M_Z, M_W) and the electroweak Faddeev–Popov ghosts u_γ, u_Z, u±.
+// Their vertices are kept in separate tables (FV.VR, FV.Q4R) so the tree generator,
+// which works with physical states only, never sees them. Couplings follow
+// A. Denner, Fortsch. Phys. 41 (1993) 307, App. A, and J. C. Romão and J. P. Silva,
+// Int. J. Mod. Phys. A 27 (2012) 1230025; overall signs are convention dependent.
+add('G0', { sym: 'G', sub: '', sup: '0', Q: 0, m: MZ, kind: 'goldstone', anti: 'G0', isAnti: false, selfConj: true, B: 0, L: 0, unphys: true });
+add('G+', { sym: 'G', sub: '', sup: '+', Q: 1, m: MW, kind: 'goldstone', anti: 'G-', isAnti: false, selfConj: false, B: 0, L: 0, unphys: true });
+add('G-', { sym: 'G', sub: '', sup: '−', Q: -1, m: MW, kind: 'goldstone', anti: 'G+', isAnti: true, selfConj: false, B: 0, L: 0, unphys: true });
+[['uA', 'γ', 0, 0], ['uZ', 'Z', 0, MZ], ['uP', '+', 1, MW], ['uM', '−', -1, MW]].forEach(([id, sub, Q, m]) => {
+  add(id, { sym: 'u', sub, sup: '', Q, m, kind: 'ghost', anti: id + 'bar', isAnti: false, selfConj: false, B: 0, L: 0, ghost: true, ewGhost: true, unphys: true });
+  add(id + 'bar', { sym: 'u', sub, sup: '', Q: -Q, m, kind: 'ghost', anti: id, isAnti: true, bar: true, selfConj: false, B: 0, L: 0, ghost: true, ewGhost: true, unphys: true });
+});
+const VR = FV.VR = new Map(), Q4R = FV.Q4R = new Map();
+function addR(legs, info) {
+  const k = key(legs);
+  info.legs = legs.slice(); info.key = k; info.rxi = true;
+  if (legs.length === 4) info.quartic = true;
+  (legs.length === 3 ? VR : Q4R).set(k, info);
+}
+const MH2v = MH * MH / VEV, MH2v2 = MH * MH / VEV / VEV, c2w = CW * CW - SW * SW;
+const MOM = '(p<sub>1</sub> − p<sub>2</sub>)<sup>μ</sup>';
+// vector – scalar – scalar
+addR(['gamma', 'G+', 'G-'], { group: 'Goldstone', rule: '−i e (p<sub>+</sub> − p<sub>−</sub>)<sup>μ</sup>', params: [['e', fmt(E)]], strength: E, ord: { e: 1 }, note: 'p = outgoing G momenta' });
+addR(['Z', 'G+', 'G-'], { group: 'Goldstone', rule: '−i e (c<sub>W</sub>² − s<sub>W</sub>²)/(2s<sub>W</sub>c<sub>W</sub>) (p<sub>+</sub> − p<sub>−</sub>)<sup>μ</sup>', params: [['e(c²−s²)/(2sc)', fmt(E * c2w / (2 * SW * CW))]], strength: E * c2w / (2 * SW * CW), ord: { g: 1 } });
+addR(['Z', 'G0', 'H'], { group: 'Goldstone', rule: '(e / 2s<sub>W</sub>c<sub>W</sub>) (p<sub>H</sub> − p<sub>G⁰</sub>)<sup>μ</sup>', params: [['e/(2sc)', fmt(E / (2 * SW * CW))]], strength: E / (2 * SW * CW), ord: { g: 1 } });
+addR(['W+', 'G-', 'H'], { group: 'Goldstone', rule: '∓i (e / 2s<sub>W</sub>) (p<sub>H</sub> − p<sub>G</sub>)<sup>μ</sup>', params: [['e/(2s)', fmt(E / (2 * SW))]], strength: E / (2 * SW), ord: { g: 1 } });
+addR(['W-', 'G+', 'H'], VR.get(key(['W+', 'G-', 'H'])) && Object.assign({}, VR.get(key(['W+', 'G-', 'H']))));
+addR(['W+', 'G-', 'G0'], { group: 'Goldstone', rule: '(e / 2s<sub>W</sub>) (p<sub>G⁰</sub> − p<sub>G</sub>)<sup>μ</sup>', params: [['e/(2s)', fmt(E / (2 * SW))]], strength: E / (2 * SW), ord: { g: 1 } });
+addR(['W-', 'G+', 'G0'], Object.assign({}, VR.get(key(['W+', 'G-', 'G0']))));
+// vector – vector – scalar
+addR(['gamma', 'W+', 'G-'], { dim: 1, group: 'Goldstone', rule: '−i e M<sub>W</sub> g<sup>μν</sup>', params: [['e M<sub>W</sub>', fmt(E * MW) + ' GeV']], strength: E * MW / 100, ord: { e: 1 } });
+addR(['gamma', 'W-', 'G+'], Object.assign({}, VR.get(key(['gamma', 'W+', 'G-']))));
+addR(['Z', 'W+', 'G-'], { dim: 1, group: 'Goldstone', rule: 'i e M<sub>W</sub> (s<sub>W</sub>/c<sub>W</sub>) g<sup>μν</sup>', params: [['e M<sub>W</sub> s/c', fmt(E * MW * SW / CW) + ' GeV']], strength: E * MW * SW / CW / 100, ord: { g: 1 } });
+addR(['Z', 'W-', 'G+'], Object.assign({}, VR.get(key(['Z', 'W+', 'G-']))));
+// scalar cubic and quartic
+addR(['H', 'G0', 'G0'], { dim: 1, group: 'Goldstone', rule: '−i M<sub>H</sub>² / v', params: [['M<sub>H</sub>²/v', fmt(MH2v) + ' GeV']], strength: MH2v / 100, ord: { lam: 1 } });
+addR(['H', 'G+', 'G-'], { dim: 1, group: 'Goldstone', rule: '−i M<sub>H</sub>² / v', params: [['M<sub>H</sub>²/v', fmt(MH2v) + ' GeV']], strength: MH2v / 100, ord: { lam: 1 } });
+addR(['G0', 'G0', 'G0', 'G0'], { group: 'Goldstone', rule: '−3i M<sub>H</sub>² / v²', params: [['M<sub>H</sub>²/v²', fmt(MH2v2)]], strength: 0.2, ord: { lam: 1 } });
+addR(['G+', 'G-', 'G+', 'G-'], { group: 'Goldstone', rule: '−2i M<sub>H</sub>² / v²', params: [['M<sub>H</sub>²/v²', fmt(MH2v2)]], strength: 0.15, ord: { lam: 1 } });
+[['G+', 'G-', 'G0', 'G0'], ['H', 'H', 'G0', 'G0'], ['H', 'H', 'G+', 'G-']].forEach(l => addR(l, { group: 'Goldstone', rule: '−i M<sub>H</sub>² / v²', params: [['M<sub>H</sub>²/v²', fmt(MH2v2)]], strength: 0.07, ord: { lam: 1 } }));
+// vector – vector – scalar – scalar
+addR(['W+', 'W-', 'G0', 'G0'], { group: 'Goldstone', rule: 'i (g²/2) g<sup>μν</sup>', params: [['g²/2', fmt(GW * GW / 2)]], strength: GW * GW / 2, ord: { g: 2 } });
+addR(['W+', 'W-', 'G+', 'G-'], { group: 'Goldstone', rule: 'i (g²/2) g<sup>μν</sup>', params: [['g²/2', fmt(GW * GW / 2)]], strength: GW * GW / 2, ord: { g: 2 } });
+addR(['Z', 'Z', 'G0', 'G0'], { group: 'Goldstone', rule: 'i (g²/2c<sub>W</sub>²) g<sup>μν</sup>', params: [['g²/2c²', fmt(GW * GW / 2 / CW / CW)]], strength: GW * GW / 2 / CW / CW, ord: { g: 2 } });
+addR(['Z', 'Z', 'G+', 'G-'], { group: 'Goldstone', rule: 'i e² (c<sub>W</sub>² − s<sub>W</sub>²)² / (2s<sub>W</sub>²c<sub>W</sub>²) g<sup>μν</sup>', params: [['e²(c²−s²)²/(2s²c²)', fmt(E * E * c2w * c2w / (2 * SW2 * CW * CW))]], strength: E * E * c2w * c2w / (2 * SW2 * CW * CW), ord: { g: 2 } });
+addR(['gamma', 'gamma', 'G+', 'G-'], { group: 'Goldstone', rule: '2i e² g<sup>μν</sup>', params: [['2e²', fmt(2 * E * E)]], strength: 2 * E * E, ord: { e: 2 } });
+addR(['gamma', 'Z', 'G+', 'G-'], { group: 'Goldstone', rule: 'i e² (c<sub>W</sub>² − s<sub>W</sub>²)/(s<sub>W</sub>c<sub>W</sub>) g<sup>μν</sup>', params: [['e²(c²−s²)/(sc)', fmt(E * E * c2w / (SW * CW))]], strength: E * E * c2w / (SW * CW), ord: { e: 1, g: 1 } });
+[['W+', 'G-'], ['W-', 'G+']].forEach(([w, g]) => {
+  addR(['gamma', w, g, 'H'], { group: 'Goldstone', rule: '−i (e²/2s<sub>W</sub>) g<sup>μν</sup>', params: [['e²/(2s)', fmt(E * E / (2 * SW))]], strength: E * E / (2 * SW), ord: { e: 1, g: 1 } });
+  addR(['gamma', w, g, 'G0'], { group: 'Goldstone', rule: '∓(e²/2s<sub>W</sub>) g<sup>μν</sup>', params: [['e²/(2s)', fmt(E * E / (2 * SW))]], strength: E * E / (2 * SW), ord: { e: 1, g: 1 } });
+  addR(['Z', w, g, 'H'], { group: 'Goldstone', rule: '−i (e²/2c<sub>W</sub>) g<sup>μν</sup>', params: [['e²/(2c)', fmt(E * E / (2 * CW))]], strength: E * E / (2 * CW), ord: { e: 1, g: 1 } });
+  addR(['Z', w, g, 'G0'], { group: 'Goldstone', rule: '±(e²/2c<sub>W</sub>) g<sup>μν</sup>', params: [['e²/(2c)', fmt(E * E / (2 * CW))]], strength: E * E / (2 * CW), ord: { e: 1, g: 1 } });
+});
+// fermions – Goldstones (Yukawa-type, proportional to the masses)
+FERM.forEach(r => {
+  const id = r[0], f = P[id];
+  if (f.m > 0) addR([id, f.anti, 'G0'], { group: 'Goldstone', rule: '∓ (m<sub>f</sub>/v) γ⁵ (sign = 2T³<sub>f</sub>)', params: [['m<sub>f</sub>/v', fmt(f.m / VEV)]], strength: f.m / VEV, ord: { y: 1 } });
+});
+function addG(u, d, vckm, lepton) {
+  const mu = P[u].m, md = P[d].m, s = (mu + md) / VEV * Math.SQRT2 * vckm;
+  const info = { group: 'Goldstone', rule: 'i (√2/v) ' + (lepton ? '' : 'V<sub>' + P[u].sym + P[d].sym + '</sub> ') + '(m<sub>' + P[u].sym + '</sub> P<sub>L</sub> − m<sub>' + P[d].sym + '</sub> P<sub>R</sub>)', params: [['√2 m/v', fmt(s)]], strength: Math.max(s, 1e-7), ord: { y: 1 } };
+  addR([u, anti(d), 'G-'], info);
+  addR([anti(u), d, 'G+'], Object.assign({}, info));
+}
+addG('nu_e', 'e-', 1, true); addG('nu_mu', 'mu-', 1, true); addG('nu_tau', 'tau-', 1, true);
+ups.forEach(u => downs.forEach(d => addG(u, d, CKM[u][d], false)));
+// ghosts – gauge bosons (the ghost line runs from the leg 'u' to the leg 'ū')
+const GH = (legs, rule, c, ord) => addR(legs, { group: 'Ghost', rule, params: [['coupling', fmt(c)]], strength: c, ord, note: 'p = outgoing ghost momentum' });
+GH(['uP', 'uPbar', 'gamma'], '∓ e p<sup>μ</sup>', E, { e: 1 }); GH(['uM', 'uMbar', 'gamma'], '± e p<sup>μ</sup>', E, { e: 1 });
+GH(['uP', 'uPbar', 'Z'], '± e (c<sub>W</sub>/s<sub>W</sub>) p<sup>μ</sup>', E * CW / SW, { g: 1 }); GH(['uM', 'uMbar', 'Z'], '∓ e (c<sub>W</sub>/s<sub>W</sub>) p<sup>μ</sup>', E * CW / SW, { g: 1 });
+GH(['uP', 'uAbar', 'W-'], '± e p<sup>μ</sup>', E, { e: 1 }); GH(['uM', 'uAbar', 'W+'], '∓ e p<sup>μ</sup>', E, { e: 1 });
+GH(['uP', 'uZbar', 'W-'], '∓ e (c<sub>W</sub>/s<sub>W</sub>) p<sup>μ</sup>', E * CW / SW, { g: 1 }); GH(['uM', 'uZbar', 'W+'], '± e (c<sub>W</sub>/s<sub>W</sub>) p<sup>μ</sup>', E * CW / SW, { g: 1 });
+GH(['uA', 'uPbar', 'W+'], '± e p<sup>μ</sup>', E, { e: 1 }); GH(['uA', 'uMbar', 'W-'], '∓ e p<sup>μ</sup>', E, { e: 1 });
+GH(['uZ', 'uPbar', 'W+'], '∓ e (c<sub>W</sub>/s<sub>W</sub>) p<sup>μ</sup>', E * CW / SW, { g: 1 }); GH(['uZ', 'uMbar', 'W-'], '± e (c<sub>W</sub>/s<sub>W</sub>) p<sup>μ</sup>', E * CW / SW, { g: 1 });
+// ghosts – scalars (from the gauge-fixing terms; dimensionful)
+const GS_ = (legs, rule, c) => addR(legs, { dim: 1, group: 'Ghost', rule, params: [['coupling', fmt(c) + ' GeV']], strength: c / 100, ord: { g: 1 } });
+GS_(['uZ', 'uZbar', 'H'], '−i e M<sub>Z</sub> / (2s<sub>W</sub>c<sub>W</sub>)', E * MZ / (2 * SW * CW));
+GS_(['uP', 'uPbar', 'H'], '−i e M<sub>W</sub> / (2s<sub>W</sub>)', E * MW / (2 * SW)); GS_(['uM', 'uMbar', 'H'], '−i e M<sub>W</sub> / (2s<sub>W</sub>)', E * MW / (2 * SW));
+GS_(['uP', 'uPbar', 'G0'], '∓ e M<sub>W</sub> / (2s<sub>W</sub>)', E * MW / (2 * SW)); GS_(['uM', 'uMbar', 'G0'], '± e M<sub>W</sub> / (2s<sub>W</sub>)', E * MW / (2 * SW));
+GS_(['uZ', 'uPbar', 'G+'], 'i e M<sub>Z</sub> / (2s<sub>W</sub>c<sub>W</sub>)', E * MZ / (2 * SW * CW)); GS_(['uZ', 'uMbar', 'G-'], 'i e M<sub>Z</sub> / (2s<sub>W</sub>c<sub>W</sub>)', E * MZ / (2 * SW * CW));
+GS_(['uP', 'uZbar', 'G-'], 'i e M<sub>W</sub> (c<sub>W</sub>² − s<sub>W</sub>²)/(2s<sub>W</sub>c<sub>W</sub>)', E * MW * c2w / (2 * SW * CW)); GS_(['uM', 'uZbar', 'G+'], 'i e M<sub>W</sub> (c<sub>W</sub>² − s<sub>W</sub>²)/(2s<sub>W</sub>c<sub>W</sub>)', E * MW * c2w / (2 * SW * CW));
+GS_(['uP', 'uAbar', 'G-'], 'i e M<sub>W</sub>', E * MW); GS_(['uM', 'uAbar', 'G+'], 'i e M<sub>W</sub>', E * MW);
+FV.isUnphysical = id => !!P[id].unphys;
+FV.PALETTE = ORDER.filter(FV.isVisible);
 })();
 (function () {
 'use strict';
@@ -297,7 +384,7 @@ FV.newDiag = newDiag; FV.addVert = addVert; FV.addEdge = addEdge;
 FV.vinfo = function (d, v) {
   if (v.ct || v.kind !== 'v') return null;
   const l = legsAt(d, v.id).map(x => x.p);
-  return (l.length === 3 ? V.get(key(l)) : l.length === 4 ? Q4.get(key(l)) : null) || null;
+  return (l.length === 3 ? V.get(key(l)) || (FV.VR && FV.VR.get(key(l))) : l.length === 4 ? Q4.get(key(l)) || (FV.Q4R && FV.Q4R.get(key(l))) : null) || null;
 };
 FV.countLoops = d => d.edges.length - d.verts.length + 1;
 FV.orderOf = function (d) {
@@ -1026,6 +1113,7 @@ function kindOf(pid) {
   const p = P[pid];
   if (p.fermion) return 'fermion';
   if (p.ghost) return 'ghost';
+  if (p.kind === 'goldstone') return 'goldstone';
   return { gamma: 'photon', Z: 'zboson', 'W+': 'wboson', 'W-': 'wboson', g: 'gluon', H: 'higgs' }[pid];
 }
 FV.kindOf = kindOf;

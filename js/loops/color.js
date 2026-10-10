@@ -32,7 +32,7 @@ export function colourKind(pid) {
     const p = P()[pid];
     if (!p) return null;
     if (p.kind === 'quark') return 'q';
-    if (pid === 'g' || p.ghost) return 'a';
+    if (pid === 'g' || (p.ghost && !p.ewGhost)) return 'a';
     return null;
 }
 
