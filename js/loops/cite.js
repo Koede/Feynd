@@ -3,7 +3,7 @@
 // short label plus a link, so a rule can say which experiment or paper backs it.
 
 export const CITE = {
-    PDG: { text: 'S. Navas et al. (Particle Data Group), Phys. Rev. D 110, 030001 (2024)', url: 'https://pdg.lbl.gov' },
+    PDG: { text: 'Particle Data Group, Review of Particle Physics, 2026 edition (S. Navas et al., Phys. Rev. D 110, 030001 (2024) and 2026 update)', url: 'https://pdg.lbl.gov/2026/' },
     SK_PDECAY: { text: 'Super-Kamiokande, Phys. Rev. D 102, 112011 (2020): τ(p → e⁺π⁰) > 2.4 × 10³⁴ yr', url: 'https://arxiv.org/abs/2010.16098' },
     MEG2: { text: 'MEG II, arXiv:2504.15711 (2025): B(μ⁺ → e⁺γ) < 1.5 × 10⁻¹³ (90% CL)', url: 'https://arxiv.org/abs/2504.15711' },
     SK_OSC: { text: 'Super-Kamiokande, Phys. Rev. Lett. 81, 1562 (1998): atmospheric neutrino oscillation', url: 'https://doi.org/10.1103/PhysRevLett.81.1562' },

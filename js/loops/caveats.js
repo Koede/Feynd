@@ -7,7 +7,8 @@ import { CITE } from './cite.js';
 import { HADRONS } from '../hadrons.js';
 
 const P = FV.P;
-const CKM = { u: { d: 0.97435, s: 0.22501, b: 0.003732 }, c: { d: 0.22487, s: 0.97349, b: 0.04183 }, t: { d: 0.00858, s: 0.04111, b: 0.999118 } };
+import { PDG } from './pdg.js';
+const CKM = PDG.CKM;
 const bare = id => FV.flowId(id).replace('bar', '');
 const lab = FV.labHTML;
 

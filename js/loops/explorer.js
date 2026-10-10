@@ -7,6 +7,7 @@
 import { FV } from './engine.js';
 import { toEngineIds, loopSupported } from './symbols.js';
 import CSS from './explorer-css.js';
+import { PDG } from './pdg.js';
 
 export { loopSupported };
 
@@ -164,7 +165,7 @@ function createApp(root, ini, fin, res) {
                 c.exprs.map(e => '<div class="re m">' + e + '</div>').join('') + (c.note ? '<div class="re note">' + c.note + '</div>' : '') + '</div>';
         });
         h += '</div>';
-        h += '<div class="rcard"><h3>Conventions</h3><ul class="conv"><li>Δ<sub>UV</sub> = 1/ε − γ<sub>E</sub> + ln 4π in d = 4 − 2ε; Δ<sub>IR</sub> likewise.</li><li>QED and QCD constants are written out in full. Electroweak ones are given as on-shell conditions, as in Denner (1993).</li><li>Inputs: α = 1/137.036, α<sub>s</sub>(M<sub>Z</sub>) = 0.118, s<sub>W</sub>² = 0.2312, v = 246.22 GeV, M<sub>W</sub> = 80.38 GeV, M<sub>Z</sub> = 91.19 GeV. s<sub>W</sub>² is the MS-bar / effective value used in the Z couplings; the on-shell value 1 − M<sub>W</sub>²/M<sub>Z</sub>² = 0.223 differs from it at one loop, so tree-level relations such as M<sub>W</sub> = M<sub>Z</sub>c<sub>W</sub> hold only to that accuracy.</li><li>W and Z lines are in unitary gauge; gluons in Feynman gauge with ghosts.</li><li>Fermion vertices follow D<sub>μ</sub> = ∂<sub>μ</sub> − i g A<sub>μ</sub>. Overall signs of gauge self-couplings are convention-dependent.</li><li>Quartic contact terms and tadpoles are not generated at loop level.</li></ul></div>';
+        h += '<div class="rcard"><h3>Conventions</h3><ul class="conv"><li>Δ<sub>UV</sub> = 1/ε − γ<sub>E</sub> + ln 4π in d = 4 − 2ε; Δ<sub>IR</sub> likewise.</li><li>QED and QCD constants are written out in full. Electroweak ones are given as on-shell conditions, as in Denner (1993).</li><li>Inputs (' + PDG.edition + ', <a href="' + PDG.url + '" target="_blank" rel="noopener">pdg.lbl.gov</a>): α = 1/' + PDG.alphaInv + ', α<sub>s</sub>(M<sub>Z</sub>) = ' + PDG.alphaS.toFixed(4) + ', s<sub>W</sub>² = ' + PDG.sw2 + ' (MS-bar), G<sub>F</sub> = ' + PDG.GF.toExponential(7) + ' GeV⁻² so v = (√2G<sub>F</sub>)<sup>−1/2</sup> = ' + PDG.vev.toFixed(2) + ' GeV, M<sub>W</sub> = ' + PDG.MW + ' GeV, M<sub>Z</sub> = ' + PDG.MZ + ' GeV, M<sub>H</sub> = ' + PDG.MH + ' GeV, m<sub>t</sub> = ' + PDG.mt + ' GeV; quark masses MS-bar (u, d, s at 2 GeV; c, b at their own mass), CKM magnitudes from the PDG global fit. s<sub>W</sub>² is the MS-bar value used in the Z couplings; the on-shell value 1 − M<sub>W</sub>²/M<sub>Z</sub>² = ' + (1 - PDG.MW * PDG.MW / PDG.MZ / PDG.MZ).toFixed(4) + ' differs from it at one loop, so tree-level relations such as M<sub>W</sub> = M<sub>Z</sub>c<sub>W</sub> hold only to that accuracy.</li><li>W and Z lines are in unitary gauge; gluons in Feynman gauge with ghosts.</li><li>Fermion vertices follow D<sub>μ</sub> = ∂<sub>μ</sub> − i g A<sub>μ</sub>. Overall signs of gauge self-couplings are convention-dependent.</li><li>Quartic contact terms and tadpoles are not generated at loop level.</li></ul></div>';
         $('#rbody').innerHTML = h;
     }
     function counterterms(d) {

@@ -1,14 +1,16 @@
 // js/loops/engine.js — loop engine (generated from the Feynman Viewer sources, DOM-free).
 // Crossing-symmetric tree enumeration, loop insertion, renormalization data, layout and SVG rendering.
+import { PDG } from './pdg.js';
 const FV = {};
 (function () {
 'use strict';
-// ---- Standard Model inputs ------------------------------------------------
-const ALPHA = 1 / 137.036, SW2 = 0.2312, VEV = 246.22, ALPHAS = 0.118;
+// ---- Standard Model inputs (Particle Data Group 2026, see pdg.js) -----------------
+const ALPHA = 1 / PDG.alphaInv, SW2 = PDG.sw2, VEV = PDG.vev, ALPHAS = PDG.alphaS;
 const E = Math.sqrt(4 * Math.PI * ALPHA), SW = Math.sqrt(SW2), CW = Math.sqrt(1 - SW2);
 const GW = E / SW, GS = Math.sqrt(4 * Math.PI * ALPHAS);
-const MW = 80.38, MZ = 91.19, MH = 125.25;
+const MW = PDG.MW, MZ = PDG.MZ, MH = PDG.MH;
 FV.C = { ALPHA, SW2, VEV, ALPHAS, E, SW, CW, GW, GS, MW, MZ, MH };
+FV.PDG = PDG;
 
 // ---- number / charge formatting -------------------------------------------
 const SUP = { '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹', '-': '⁻' };
@@ -34,18 +36,18 @@ const P = FV.P = {}, ORDER = FV.ORDER = [];
 function add(id, o) { o.id = id; P[id] = o; ORDER.push(id); }
 
 const FERM = [
-  ['e-', 'e+', 'e', '', '−', '+', -1, -0.5, 0.000511, 'lepton', 1, 'e'],
-  ['mu-', 'mu+', 'μ', '', '−', '+', -1, -0.5, 0.10566, 'lepton', 2, 'mu'],
-  ['tau-', 'tau+', 'τ', '', '−', '+', -1, -0.5, 1.77686, 'lepton', 3, 'tau'],
+  ['e-', 'e+', 'e', '', '−', '+', -1, -0.5, PDG.me, 'lepton', 1, 'e'],
+  ['mu-', 'mu+', 'μ', '', '−', '+', -1, -0.5, PDG.mmu, 'lepton', 2, 'mu'],
+  ['tau-', 'tau+', 'τ', '', '−', '+', -1, -0.5, PDG.mtau, 'lepton', 3, 'tau'],
   ['nu_e', 'nubar_e', 'ν', 'e', '', '', 0, 0.5, 0, 'lepton', 1, 'e'],
   ['nu_mu', 'nubar_mu', 'ν', 'μ', '', '', 0, 0.5, 0, 'lepton', 2, 'mu'],
   ['nu_tau', 'nubar_tau', 'ν', 'τ', '', '', 0, 0.5, 0, 'lepton', 3, 'tau'],
-  ['u', 'ubar', 'u', '', '', '', 2 / 3, 0.5, 0.00216, 'quark', 1, ''],
-  ['d', 'dbar', 'd', '', '', '', -1 / 3, -0.5, 0.00467, 'quark', 1, ''],
-  ['c', 'cbar', 'c', '', '', '', 2 / 3, 0.5, 1.27, 'quark', 2, ''],
-  ['s', 'sbar', 's', '', '', '', -1 / 3, -0.5, 0.093, 'quark', 2, ''],
-  ['t', 'tbar', 't', '', '', '', 2 / 3, 0.5, 172.5, 'quark', 3, ''],
-  ['b', 'bbar', 'b', '', '', '', -1 / 3, -0.5, 4.18, 'quark', 3, '']
+  ['u', 'ubar', 'u', '', '', '', 2 / 3, 0.5, PDG.mu, 'quark', 1, ''],
+  ['d', 'dbar', 'd', '', '', '', -1 / 3, -0.5, PDG.md, 'quark', 1, ''],
+  ['c', 'cbar', 'c', '', '', '', 2 / 3, 0.5, PDG.mc, 'quark', 2, ''],
+  ['s', 'sbar', 's', '', '', '', -1 / 3, -0.5, PDG.ms, 'quark', 2, ''],
+  ['t', 'tbar', 't', '', '', '', 2 / 3, 0.5, PDG.mt, 'quark', 3, ''],
+  ['b', 'bbar', 'b', '', '', '', -1 / 3, -0.5, PDG.mb, 'quark', 3, '']
 ];
 FERM.forEach(r => {
   const [id, aid, sym, sub, sup, asup, Q, T3, m, kind, gen, lf] = r;
@@ -120,11 +122,7 @@ function addQ(legs, info) {
 FV.partners4 = (a, b, c) => Q4PART.get(key([a, b, c])) || [];
 FV.partners = (a, b) => PART.get(pk(a, b)) || [];
 
-const CKM = {
-  u: { d: 0.97435, s: 0.22501, b: 0.003732 },
-  c: { d: 0.22487, s: 0.97349, b: 0.04183 },
-  t: { d: 0.00858, s: 0.04111, b: 0.999118 }
-};
+const CKM = PDG.CKM;
 const ups = ['u', 'c', 't'], downs = ['d', 's', 'b'];
 const GAMMA_MU = 'γ<sup>μ</sup>';
 

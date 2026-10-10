@@ -36,9 +36,9 @@ export const HADRONS = {
             note: '≈ (uū + dd̄ − 2ss̄)/√6 — mostly the octet state η₈, mixed with the singlet' },
 
     // ---------------------------------------------------------------- baryons
-    'p':  { name: 'Proton',  type: 'baryon', group: 'baryon', spin: 0.5, Q:  1, B: 1, S: 0, m: 938.27209,
+    'p':  { name: 'Proton',  type: 'baryon', group: 'baryon', spin: 0.5, Q:  1, B: 1, S: 0, m: 938.27208943,
             quarks: ['u', 'u', 'd'], anti: 'p̄', label: 'p', massLabel: '938.27 MeV' },
-    'n':  { name: 'Neutron', type: 'baryon', group: 'baryon', spin: 0.5, Q:  0, B: 1, S: 0, m: 939.56542,
+    'n':  { name: 'Neutron', type: 'baryon', group: 'baryon', spin: 0.5, Q:  0, B: 1, S: 0, m: 939.5654219,
             quarks: ['u', 'd', 'd'], anti: 'n̄', label: 'n', massLabel: '939.57 MeV' },
     'Λ':  { name: 'Lambda',  type: 'baryon', group: 'baryon', spin: 0.5, Q:  0, B: 1, S: -1, m: 1115.683,
             quarks: ['u', 'd', 's'], anti: 'Λ̄', label: 'Λ', massLabel: '1115.68 MeV' },
@@ -56,9 +56,9 @@ export const HADRONS = {
             quarks: ['s', 's', 's'], anti: 'Ω̄⁺', label: 'Ω⁻', massLabel: '1672.45 MeV' },
 
     // ------------------------------------------------------------ antibaryons
-    'p̄':  { name: 'Anti-Proton',  type: 'baryon', group: 'antibaryon', spin: 0.5, Q: -1, B: -1, S: 0, m: 938.27209,
+    'p̄':  { name: 'Anti-Proton',  type: 'baryon', group: 'antibaryon', spin: 0.5, Q: -1, B: -1, S: 0, m: 938.27208943,
             quarks: ['ū', 'ū', 'd̄'], anti: 'p', label: 'p̄', massLabel: '938.27 MeV' },
-    'n̄':  { name: 'Anti-Neutron', type: 'baryon', group: 'antibaryon', spin: 0.5, Q:  0, B: -1, S: 0, m: 939.56542,
+    'n̄':  { name: 'Anti-Neutron', type: 'baryon', group: 'antibaryon', spin: 0.5, Q:  0, B: -1, S: 0, m: 939.5654219,
             quarks: ['ū', 'd̄', 'd̄'], anti: 'n', label: 'n̄', massLabel: '939.57 MeV' },
     'Λ̄':  { name: 'Anti-Lambda',  type: 'baryon', group: 'antibaryon', spin: 0.5, Q:  0, B: -1, S:  1, m: 1115.683,
             quarks: ['ū', 'd̄', 's̄'], anti: 'Λ', label: 'Λ̄', massLabel: '1115.68 MeV' },

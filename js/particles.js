@@ -1,7 +1,9 @@
 // js/particles.js
 // Elementary particles of the Standard Model.
 //   m          : mass in MeV (numeric, used by the kinematic check)
-//   massLabel  : display string, preserves the original PDG precision
+//   massLabel  : display string at PDG precision
+// Values: Particle Data Group, Review of Particle Physics 2026 (pdg.lbl.gov/2026), Summary Tables.
+// Quark masses are MS-bar (u, d, s at 2 GeV; c, b at their own mass); t is the direct-measurement mass.
 //   unc        : uncertainty string for the tooltip
 //   label      : HTML shown inside the draggable icon
 //   panel      : 'elementary' | 'hadron'  (which tab it belongs to)
@@ -18,9 +20,9 @@ export const PARTICLES = {
              m: 0, massLabel: '<0.45 eV', unc: '0', label: 'ν̄<sub>e</sub>', panel: 'elementary' },
 
     'μ⁻':  { name: 'Muon', type: 'fermion', spin: 0.5, Q: -1, Le:  0, Lmu:  1, Ltau:  0, B: 0, color: 'singlet', anti: 'μ⁺',
-             m: 105.6583755, massLabel: '105.65 MeV', unc: '0.00000023', label: 'μ⁻', panel: 'elementary' },
+             m: 105.6583755, massLabel: '105.66 MeV', unc: '0.0000023', label: 'μ⁻', panel: 'elementary' },
     'μ⁺':  { name: 'Anti-Muon', type: 'fermion', spin: 0.5, Q:  1, Le:  0, Lmu: -1, Ltau:  0, B: 0, color: 'singlet', anti: 'μ⁻',
-             m: 105.6583755, massLabel: '105.65 MeV', unc: '0.00000023', label: 'μ⁺', panel: 'elementary' },
+             m: 105.6583755, massLabel: '105.66 MeV', unc: '0.0000023', label: 'μ⁺', panel: 'elementary' },
     'νμ':  { name: 'Muon Neutrino', type: 'fermion', spin: 0.5, Q: 0, Le: 0, Lmu:  1, Ltau: 0, B: 0, color: 'singlet', anti: 'ν̄μ',
              m: 0, massLabel: '<0.19 MeV', unc: '0', label: 'ν<sub>μ</sub>', panel: 'elementary' },
     'ν̄μ':  { name: 'Anti-Muon Neutrino', type: 'fermion', spin: 0.5, Q: 0, Le: 0, Lmu: -1, Ltau: 0, B: 0, color: 'singlet', anti: 'νμ',
@@ -37,31 +39,31 @@ export const PARTICLES = {
 
     // Quarks (Generations 1-3)
     'u':   { name: 'Up Quark', type: 'fermion', spin: 0.5, Q:  2/3, Le: 0, Lmu: 0, Ltau: 0, B: 1/3, color: 'triplet', anti: 'ū',
-             m: 2.16, massLabel: '2.16 MeV', unc: '0.04', label: 'u', panel: 'elementary' },
+             m: 2.16, massLabel: '2.16 MeV', unc: '0.07', label: 'u', panel: 'elementary' },
     'ū':   { name: 'Anti-Up',  type: 'fermion', spin: 0.5, Q: -2/3, Le: 0, Lmu: 0, Ltau: 0, B:-1/3, color: 'triplet', anti: 'u',
-             m: 2.16, massLabel: '2.16 MeV', unc: '0.04', label: 'ū', panel: 'elementary' },
+             m: 2.16, massLabel: '2.16 MeV', unc: '0.07', label: 'ū', panel: 'elementary' },
     'd':   { name: 'Down Quark', type: 'fermion', spin: 0.5, Q: -1/3, Le: 0, Lmu: 0, Ltau: 0, B: 1/3, color: 'triplet', anti: 'd̄',
-             m: 4.70, massLabel: '4.70 MeV', unc: '0.04', label: 'd', panel: 'elementary' },
+             m: 4.70, massLabel: '4.70 MeV', unc: '0.07', label: 'd', panel: 'elementary' },
     'd̄':   { name: 'Anti-Down',  type: 'fermion', spin: 0.5, Q:  1/3, Le: 0, Lmu: 0, Ltau: 0, B:-1/3, color: 'triplet', anti: 'd',
-             m: 4.70, massLabel: '4.70 MeV', unc: '0.04', label: 'd̄', panel: 'elementary' },
+             m: 4.70, massLabel: '4.70 MeV', unc: '0.07', label: 'd̄', panel: 'elementary' },
 
     'c':   { name: 'Charm Quark', type: 'fermion', spin: 0.5, Q:  2/3, Le: 0, Lmu: 0, Ltau: 0, B: 1/3, color: 'triplet', anti: 'c̄',
-             m: 1272.9, massLabel: '1.2729 GeV', unc: '0.0027', label: 'c', panel: 'elementary' },
+             m: 1272.9, massLabel: '1.2729 GeV', unc: '0.0045', label: 'c', panel: 'elementary' },
     'c̄':   { name: 'Anti-Charm',  type: 'fermion', spin: 0.5, Q: -2/3, Le: 0, Lmu: 0, Ltau: 0, B:-1/3, color: 'triplet', anti: 'c',
-             m: 1272.9, massLabel: '1.2729 GeV', unc: '0.0027', label: 'c̄', panel: 'elementary' },
+             m: 1272.9, massLabel: '1.2729 GeV', unc: '0.0045', label: 'c̄', panel: 'elementary' },
     's':   { name: 'Strange Quark', type: 'fermion', spin: 0.5, Q: -1/3, Le: 0, Lmu: 0, Ltau: 0, B: 1/3, color: 'triplet', anti: 's̄',
-             m: 92.9, massLabel: '92.9 MeV', unc: '0.4', label: 's', panel: 'elementary' },
+             m: 92.9, massLabel: '92.9 MeV', unc: '0.7', label: 's', panel: 'elementary' },
     's̄':   { name: 'Anti-Strange',  type: 'fermion', spin: 0.5, Q:  1/3, Le: 0, Lmu: 0, Ltau: 0, B:-1/3, color: 'triplet', anti: 's',
-             m: 92.9, massLabel: '92.9 MeV', unc: '0.4', label: 's̄', panel: 'elementary' },
+             m: 92.9, massLabel: '92.9 MeV', unc: '0.7', label: 's̄', panel: 'elementary' },
 
     't':   { name: 'Top Quark', type: 'fermion', spin: 0.5, Q:  2/3, Le: 0, Lmu: 0, Ltau: 0, B: 1/3, color: 'triplet', anti: 't̄',
              m: 172600, massLabel: '172.60 GeV', unc: '0.27', label: 't', panel: 'elementary' },
     't̄':   { name: 'Anti-Top',  type: 'fermion', spin: 0.5, Q: -2/3, Le: 0, Lmu: 0, Ltau: 0, B:-1/3, color: 'triplet', anti: 't',
              m: 172600, massLabel: '172.60 GeV', unc: '0.27', label: 't̄', panel: 'elementary' },
     'b':   { name: 'Bottom Quark', type: 'fermion', spin: 0.5, Q: -1/3, Le: 0, Lmu: 0, Ltau: 0, B: 1/3, color: 'triplet', anti: 'b̄',
-             m: 4185.9, massLabel: '4.1859 GeV', unc: '0.0034', label: 'b', panel: 'elementary' },
+             m: 4186, massLabel: '4.186 GeV', unc: '0.006', label: 'b', panel: 'elementary' },
     'b̄':   { name: 'Anti-Bottom',  type: 'fermion', spin: 0.5, Q:  1/3, Le: 0, Lmu: 0, Ltau: 0, B:-1/3, color: 'triplet', anti: 'b',
-             m: 4185.9, massLabel: '4.1859 GeV', unc: '0.0034', label: 'b̄', panel: 'elementary' },
+             m: 4186, massLabel: '4.186 GeV', unc: '0.006', label: 'b̄', panel: 'elementary' },
 
     // Gauge & Scalar Bosons
     'γ':   { name: 'Photon', type: 'boson', spin: 1, Q: 0, Le: 0, Lmu: 0, Ltau: 0, B: 0, color: 'singlet', anti: 'γ',

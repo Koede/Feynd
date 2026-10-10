@@ -1,5 +1,64 @@
 # Changelog
 
+## Parameters from the Particle Data Group (PDG 2026)
+
+Every Standard Model number the code uses now comes from one module, `js/loops/pdg.js`. All values are from the Particle Data Group's *Review of Particle Physics*, 2026 edition (https://pdg.lbl.gov/2026/): the Physical Constants table, the Summary Tables and the CKM review.
+
+**`js/loops/pdg.js` (new)**
+
+- Constants:
+  - α = 1/137.035999177
+  - G_F = 1.1663785 × 10⁻⁵ GeV⁻²
+  - sin²θ̂_W(M_Z) = 0.23122 (MS-bar)
+  - α_s(M_Z) = 0.1180
+- Bosons:
+  - M_W = 80.3625 GeV (PDG average, which excludes CDF)
+  - M_Z = 91.1879 GeV
+  - M_H = 125.13 GeV
+  - Γ_Z = 2.4955 GeV
+  - Γ_W = 2.14 GeV
+- Leptons:
+  - m_e = 0.51099895069 MeV
+  - m_μ = 105.6583755 MeV
+  - m_τ = 1776.93 MeV
+- Quarks:
+  - m_u = 2.16 MeV, m_d = 4.70 MeV, m_s = 92.9 MeV (MS-bar at 2 GeV)
+  - m_c = 1.2729 GeV, m_b = 4.186 GeV (MS-bar at their own mass)
+  - m_t = 172.60 GeV (direct measurement)
+- CKM magnitudes from the PDG global fit (Eq. 12.27): |V_ud| = 0.97431, |V_us| = 0.22517, |V_ub| = 0.003763, |V_cd| = 0.22503, |V_cs| = 0.97345, |V_cb| = 0.04189, |V_td| = 0.00863, |V_ts| = 0.04117, |V_tb| = 0.999115.
+- The Higgs vacuum expectation value is now derived from the Fermi constant instead of being typed in: v = (√2 G_F)^(−1/2) = 246.22 GeV.
+
+**Updated to read from it**
+
+- `js/loops/engine.js`. Before → after:
+  - α: 1/137.036 → 1/137.035999177
+  - s_W²: 0.2312 → 0.23122
+  - v: 246.22 → 246.2197 GeV (derived)
+  - M_W: 80.38 → 80.3625 GeV
+  - M_Z: 91.19 → 91.1879 GeV
+  - M_H: 125.25 → 125.13 GeV
+  - m_τ: 1.77686 → 1.77693 GeV
+  - m_t: 172.5 → 172.60 GeV
+  - m_b: 4.18 → 4.186 GeV
+  - m_c: 1.27 → 1.2729 GeV
+  - m_s: 93 → 92.9 MeV
+  - m_d: 4.67 → 4.70 MeV
+  - m_e, m_μ: full precision
+  - CKM: 2024 fit → 2026 fit
+
+  Every coupling built from these (e, g, g_s, Z couplings, Yukawas, HWW, HZZ, HHH, Goldstone and ghost couplings) follows automatically. The engine also exposes the module as `FV.PDG`.
+- `js/loops/caveats.js`: CKM-suppression notes use the PDG 2026 matrix.
+- `js/loops/explorer.js`: the conventions card prints the inputs from `pdg.js` with the edition and a link, including the on-shell s_W² = 1 − M_W²/M_Z² computed from the PDG masses.
+- `js/particles.js` (shared with `index.html`):
+  - uncertainties corrected to the PDG 2026 Summary Tables: m_u, m_d ± 0.07 MeV; m_s ± 0.7 MeV; m_c ± 0.0045 GeV;
+  - m_b → 4.186 ± 0.006 GeV;
+  - muon uncertainty typo fixed (0.00000023 → 0.0000023 MeV);
+  - source comment added.
+- `js/hadrons.js`: m_p = 938.27208943 MeV and m_n = 939.5654219 MeV, from the PDG 2026 baryon table. The other hadron masses already matched it.
+- `js/loops/cite.js`: the PDG reference points to the 2026 edition.
+
+Tests: 108 pass.
+
 ## Loop updates: generating loops dynamically using textbook combinatorics and renormalization rules
 
 This change is the engine half of the loop rework: diagrams of any loop order are now
