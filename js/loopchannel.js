@@ -5,7 +5,7 @@
 
 import { renderParticlePanel } from './loopui.js';
 import { initMassTooltips } from './directory.js';
-import { identifyHadron, HADRONS } from './hadrons.js';
+import { identifyHadron, HADRONS, HADRON_ALIASES } from './loops/hadrondata.js';
 import { PARTICLES } from './particles.js';
 import { FV } from './loops/engine.js';
 import { toSiteSymbol } from './loops/symbols.js';
@@ -172,6 +172,7 @@ function resolveSymbol(tok) {
     if (PARTICLES[tok] || HADRONS[tok]) return tok;
     const lower = tok.toLowerCase();
     if (ALIASES[lower]) return ALIASES[lower];
+    if (HADRON_ALIASES[lower]) return HADRON_ALIASES[lower];
     const id = FV.parseParticle(tok);
     return id ? toSiteSymbol(id) : null;
 }
@@ -281,7 +282,16 @@ const PRESETS = {
     'lambda-decay': { in: ['Λ'], out: ['p', 'π⁻'] },
     'omega-decay': { in: ['Ω⁻'], out: ['Λ', 'K⁻'] },
     'ee-to-pions': { in: ['e⁻', 'e⁺'], out: ['π⁺', 'π⁻'] },
-    'pion-search': { in: ['π⁺'], out: [] }
+    'pion-search': { in: ['π⁺'], out: [] },
+    'delta-decay': { in: ['Δ⁺⁺'], out: ['p', 'π⁺'] },
+    'phi-decay': { in: ['φ'], out: ['K⁺', 'K⁻'] },
+    'sigma0-decay': { in: ['Σ⁰'], out: ['Λ', 'γ'] },
+    'dstar-decay': { in: ['D*⁺'], out: ['D⁰', 'π⁺'] },
+    'd0-decay': { in: ['D⁰'], out: ['K⁻', 'π⁺'] },
+    'jpsi-decay': { in: ['J/ψ'], out: ['μ⁻', 'μ⁺'] },
+    'b-decay': { in: ['B⁻'], out: ['D⁰', 'π⁻'] },
+    'lambdab-decay': { in: ['Λb⁰'], out: ['Λc⁺', 'π⁻'] },
+    'rho-search': { in: ['ρ⁰'], out: [] }
 };
 function applyPreset(key) {
     const p = PRESETS[key];

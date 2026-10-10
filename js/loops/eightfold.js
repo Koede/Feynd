@@ -7,7 +7,7 @@
 // in the catalogue (charm hadrons, the decuplet resonances, the vector mesons) are
 // drawn hollow, with their measured mass, so the structure is complete.
 
-import { HADRONS } from '../hadrons.js';
+import { HADRONS, lifetimeText } from './hadrondata.js';
 
 // quark weights (I3, Y, C)
 const W = { u: [0.5, 1 / 3, 0], d: [-0.5, 1 / 3, 0], s: [0, -2 / 3, 0], c: [0, 1 / 3, 1] };
@@ -95,7 +95,7 @@ export function mountEightfold(host, { onPick } = {}) {
       <div class="ef-stage"><canvas class="ef-canvas" aria-label="Flavour multiplet, drag to rotate"></canvas><div class="ef-tip" role="tooltip"></div>
         <div class="ef-axes">drag to rotate · scroll to zoom · double-click to reset</div></div>
       <p class="ef-note"></p>
-      <div class="ef-legend"><span><i class="dot live"></i>in the catalogue · click to add</span><span><i class="dot ghost"></i>known hadron, not modelled here</span><label class="ef-charm"><input type="checkbox" checked> charm layers (SU(4))</label></div>`;
+      <div class="ef-legend"><span><i class="dot live"></i>in the catalogue · click to add</span><span><i class="dot ghost"></i>predicted, not yet observed</span><label class="ef-charm"><input type="checkbox" checked> charm layers (SU(4))</label></div>`;
     const canvas = host.querySelector('canvas'), tip = host.querySelector('.ef-tip'), note = host.querySelector('.ef-note');
     const ctx = canvas.getContext('2d');
     let model = build('oct'), key = 'oct', showCharm = true;
@@ -218,6 +218,7 @@ export function mountEightfold(host, { onPick } = {}) {
         tip.innerHTML = `<b>${p.sym}</b> ${p.name}<br><span>${p.qlabel || fmtQ(p.q)}</span>`
             + `<br>I₃ ${frac(p.I3)} · Y ${frac(p.Y)} · C ${frac(p.C)} · J<sup>P</sup> ${p.jp || model.mul.jp}`
             + `<br>${p.m ? 'm ≈ ' + p.m + ' MeV' : 'not yet observed'}`
+            + (HADRONS[p.sym] && lifetimeText(HADRONS[p.sym]) ? '<br>' + lifetimeText(HADRONS[p.sym]) : '')
             + (p.live ? '<br><em>Click to add to the selected state</em>' : '');
         tip.classList.add('on');
         let tx = ev.clientX - r.left + 14, ty = ev.clientY - r.top + 14;

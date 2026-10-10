@@ -10,7 +10,7 @@
 //                  (the antisymmetric ε_ijk singlet); antibaryons the same with anticolours
 
 import { PARTICLES } from '../particles.js';
-import { HADRONS, isAntiQuark } from '../hadrons.js';
+import { HADRONS, isAntiQuark } from './hadrondata.js';
 import { HUE, ANTIHUE, NAME, ANTINAME, LETTER, ANTILETTER, COLS } from './color.js';
 
 export function colourKindOf(sym) {
@@ -27,7 +27,7 @@ export function constituents(sym) {
     const h = HADRONS[sym];
     if (!h) return [];
     if (h.quarks) return h.quarks.slice();
-    return sym === 'π⁰' || sym === 'η' ? ['q', 'q̄'] : [];
+    return h.group === 'meson' ? ['q', 'q̄'] : [];   // flavour superpositions (π⁰, η, η′, ρ⁰, ω)
 }
 
 export function defaultColour(sym, hint) {

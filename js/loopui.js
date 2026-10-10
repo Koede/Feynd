@@ -3,7 +3,7 @@
 // and the colour pickers shown under every coloured particle in Add Color mode.
 
 import { PARTICLES, ELEMENTARY_PANEL, SELF_CONJUGATE } from './particles.js';
-import { HADRONS, HADRON_PANEL } from './hadrons.js';
+import { HADRONS, HADRON_PANEL, FAMILIES, lifetimeText } from './loops/hadrondata.js';
 import { mountEightfold } from './loops/eightfold.js';
 import { colourPickerRow } from './loops/colourui.js';
 
@@ -84,13 +84,25 @@ function entryElement(symbol, category, isAnti) {
         q.className = 'quark-badge';
         q.textContent = info.quarks.join(' ');
         meta.appendChild(q);
-    } else if (info.note) {
+    } else if (info.note && info.panel === 'hadron') {
         const n = document.createElement('span');
         n.className = 'quark-badge';
         n.textContent = 'flavour mixture';
         meta.appendChild(n);
     }
+    if (info.panel === 'hadron' && info.jp) {
+        const j = document.createElement('span');
+        j.className = 'quark-badge jp-badge';
+        j.textContent = info.jp;
+        j.title = 'spin and parity J^P';
+        meta.appendChild(j);
+    }
     if (meta.childNodes.length) infoBox.appendChild(meta);
+    if (info.panel === 'hadron') {
+        const life = lifetimeText(info);
+        const tip = [info.note, life ? 'Lifetime: ' + life : '', info.decays ? 'Main decays (PDG 2026): ' + info.decays : '', info.note2 || ''].filter(Boolean).join('\n');
+        if (tip) entry.title = tip;
+    }
 
     entry.append(icon, infoBox);
     const row = colourPickerRow(symbol, (colour) => entry.dispatchEvent(new CustomEvent('particle-pick', { detail: { symbol, colour }, bubbles: true })));
@@ -153,16 +165,25 @@ function hadronSection(group) {
     heading.appendChild(badge);
     box.appendChild(heading);
 
-    const wrap = document.createElement('div');
-    wrap.className = 'particle-group';
-    for (const info of symbols) {
-        const card = document.createElement('div');
-        card.className = 'particle';
-        const el = entryElement(info.symbol, group.group, false);
-        if (el) card.appendChild(el);
-        wrap.appendChild(card);
+    // one sub-group per flavour family (light, strange, charm, bottom)
+    for (const [fam, famTitle] of FAMILIES) {
+        const list = symbols.filter(h => (h.family || 'light') === fam);
+        if (!list.length) continue;
+        const wrap = document.createElement('div');
+        wrap.className = 'particle-group';
+        const label = document.createElement('div');
+        label.className = 'group-label';
+        label.textContent = famTitle;
+        wrap.appendChild(label);
+        for (const info of list) {
+            const card = document.createElement('div');
+            card.className = 'particle';
+            const el = entryElement(info.symbol, group.group, false);
+            if (el) card.appendChild(el);
+            wrap.appendChild(card);
+        }
+        box.appendChild(wrap);
     }
-    box.appendChild(wrap);
     return box;
 }
 

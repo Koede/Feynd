@@ -16,7 +16,7 @@ import { extendedDiagrams } from './solve.js';
 import { checkProcess } from './rules.js';
 import { colourValid, colourForElementary } from './color.js';
 import { diagramNotes, processNotes } from './caveats.js';
-import { ALL_PARTICLES } from '../hadrons.js';
+import { ALL_PARTICLES } from './hadrondata.js';
 
 const MAX_TREE = 600;
 const SUP = '⁰¹²³⁴⁵⁶⁷⁸⁹';

@@ -13,7 +13,7 @@
 // spectators is reduced only when no diagram exists. Extra quark pairs (the d d-bar of
 // Sigma+ -> n pi+) therefore appear only when the rules require a gluon to make them.
 
-import { HADRONS } from '../hadrons.js';
+import { HADRONS, quarkChoices as hadronQuarkChoices } from './hadrondata.js';
 import { FV } from './engine.js';
 import { toEngineId } from './symbols.js';
 import { colourSetup, solveColour, fixExternal, extVars, singletChip, ANTIHUE, HUE } from './color.js';
@@ -22,17 +22,8 @@ const DEFAULT_BUDGET_MS = 2500, DEFAULT_MAX_LEGS = 8;
 
 export const isHadronSymbol = s => Object.prototype.hasOwnProperty.call(HADRONS, s);
 
-// pi0 and eta are flavour superpositions: any of the listed components can be used.
-const NEUTRAL = {
-    'π⁰': [['u', 'ū'], ['d', 'd̄']],
-    'η': [['u', 'ū'], ['d', 'd̄'], ['s', 's̄']]
-};
-
-function quarkChoices(sym) {
-    const h = HADRONS[sym];
-    if (h.quarks) return [h.quarks];
-    return NEUTRAL[sym] || [];
-}
+// π⁰, η, η′, ρ⁰ and ω are flavour superpositions: any listed component can be used.
+const quarkChoices = sym => hadronQuarkChoices(sym);
 
 function product(lists) {
     return lists.reduce((acc, l) => acc.flatMap(a => l.map(x => a.concat([x]))), [[]]);

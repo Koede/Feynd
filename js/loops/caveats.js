@@ -4,7 +4,7 @@
 
 import { FV } from './engine.js';
 import { CITE } from './cite.js';
-import { HADRONS } from '../hadrons.js';
+import { HADRONS, lifetimeText } from './hadrondata.js';
 
 const P = FV.P;
 import { PDG } from './pdg.js';
@@ -34,8 +34,9 @@ export function diagramNotes(d, ctx = {}) {
         if (d.edges.some(e => e.spectator)) add('Spectator quarks', 'Spectators pass straight through. In a real decay they also exchange gluons with the active quarks, which shifts rates by large factors (final-state interactions).');
         const gl = ie.filter(e => e.p === 'g');
         if (gl.length) add('Quark pair from a gluon', 'The extra quark–antiquark pair is made by a gluon at low momentum transfer, where α_s is close to one. Perturbation theory does not hold there; this is the standard picture of hadron formation, not a controlled approximation.');
-        const mixed = initial.concat(final).filter(s => s === 'π⁰' || s === 'η');
-        if (mixed.length) add('Flavour superposition', mixed.map(s => s === 'π⁰' ? 'π⁰ = (uū − dd̄)/√2' : 'η ≈ (uū + dd̄ − 2ss̄)/√6').join('; ') + '. Only one component is drawn; the amplitude adds the diagrams of every component with these weights.');
+        const mixed = [...new Set(initial.concat(final).filter(s => HADRONS[s] && !HADRONS[s].quarks))];
+        const MIXTXT = { 'π⁰': 'π⁰ = (uū − dd̄)/√2', 'η': 'η ≈ (uū + dd̄ − 2ss̄)/√6' };
+        if (mixed.length) add('Flavour superposition', mixed.map(s => MIXTXT[s] || (s + ' ' + (HADRONS[s].note || ''))).join('; ') + '. Only one component is drawn; the amplitude adds the diagrams of every component with these weights.');
         if (initial.length === 1 && initial[0] === 'π⁰' && final.length === 2 && final.every(s => s === 'γ'))
             add('Axial anomaly', 'π⁰ → γγ is fixed by the axial (ABJ) anomaly of the quark triangle: Γ = α² m_π³ / (64 π³ f_π²) ≈ 7.8 eV with f_π ≈ 92 MeV, and matching the measured width needs N_c = 3 colours.', [CITE.ABJ, CITE.PRIMEX]);
         const lep = final.filter(s => /^[eμτ][⁺⁻]$/.test(s)), nu = final.filter(s => /^ν/.test(s));
@@ -45,6 +46,25 @@ export function diagramNotes(d, ctx = {}) {
         if (nonleptonic) add('ΔI = 1/2 rule', 'In non-leptonic strangeness-changing decays the ΔI = 1/2 amplitude is about 20 times the ΔI = 3/2 one (K → ππ). This single W diagram does not explain it; gluon (penguin) corrections and non-perturbative QCD do.', CITE.PDG);
         if (initial.length === 1 && HADRONS[initial[0]] && HADRONS[initial[0]].group !== 'meson' && ie.some(e => e.p === 'W+' || e.p === 'W-'))
             add('Parity violation', 'The weak vertex violates parity, so the daughter baryon is emitted with a preferred direction relative to the parent spin (the decay asymmetry measured in Λ → pπ⁻).', [CITE.LEEYANG, CITE.WU]);
+    }
+
+    // ------------------------------------------------- decaying hadron: interaction, lifetime, data
+    if (initial.length === 1 && HADRONS[initial[0]] && final.length) {
+        const h = HADRONS[initial[0]], life = lifetimeText(h);
+        const hasW = ie.some(e => ['W+', 'W-', 'Z'].includes(e.p)) || pOut.some(p => /^nu/.test(p));
+        const hasG = pOut.concat(ie.map(e => e.p)).some(p => p === 'gamma');
+        const kind = hasW ? 'weak' : hasG ? 'electromagnetic' : 'strong';
+        const why = kind === 'weak' ? 'a W changes the quark flavour, so the decay is slow' : kind === 'electromagnetic' ? 'a photon is emitted and flavour is unchanged' : 'flavour is conserved and the quark lines rearrange through gluons, so the decay is fast';
+        add('Interaction', 'This is a ' + kind + ' decay: ' + why + '.' + (life ? ' ' + initial[0] + ': ' + life + '.' : '') + (h.note2 ? ' ' + h.note2 : ''), CITE.PDG);
+        if (h.decays) add('Measured decays (PDG 2026)', initial[0] + ' → ' + h.decays + '.', CITE.PDG);
+        // OZI rule: a quarkonium whose quark and antiquark both disappear
+        const QFL = { 'φ': 's', 'J/ψ': 'c', 'ηc': 'c', 'Υ': 'b', 'ηb': 'b' }[initial[0]];
+        if (QFL) {
+            const keeps = final.some(f => HADRONS[f] && (HADRONS[f].quarks || []).some(q => q.normalize('NFD')[0] === QFL));
+            const lep = final.every(f => !HADRONS[f]);
+            if (!keeps && !lep) add('OZI suppression', 'The ' + QFL + ' and ' + QFL + '̄ of ' + initial[0] + ' annihilate, and the final hadrons are made from new quark pairs: the quark lines are disconnected. Such decays go through ' + (h.spin === 1 ? 'three gluons (C = −1)' : 'two gluons') + ' and are suppressed (Okubo–Zweig–Iizuka rule)' + (QFL === 's' ? ', which is why φ → KK̄ dominates over φ → πππ even though it has far less phase space.' : ', which is why ' + initial[0] + ' is so narrow (' + life + ').'), CITE.PDG);
+            else if (!keeps && lep) add('Annihilation', 'The ' + QFL + QFL + '̄ pair annihilates into a virtual photon (or Z), and the rate measures the wave function at the origin (Van Royen–Weisskopf).', CITE.PDG);
+        }
     }
 
     // ---------------------------------------------------------- free partons

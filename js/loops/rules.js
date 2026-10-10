@@ -8,7 +8,7 @@
 //
 // Symbols are the page's own ('e⁻', 'ū', 'π⁰', 'Ω⁻'). Masses are in MeV.
 
-import { ALL_PARTICLES, HADRONS, isAntiQuark, quarkFlavour } from '../hadrons.js';
+import { ALL_PARTICLES, HADRONS, isAntiQuark, quarkFlavour } from './hadrondata.js';
 import { CITE } from './cite.js';
 
 const FLAV = ['u', 'd', 's', 'c', 'b', 't'];
@@ -16,8 +16,10 @@ const fmtM = m => m >= 1000 ? (m / 1000).toFixed(m >= 10000 ? 1 : 3) + ' GeV' : 
 const frac = x => { const t = Math.round(x * 3); return t % 3 === 0 ? String(t / 3).replace('-', '−') : (t < 0 ? '−' : '') + Math.abs(t) + '/3'; };
 
 // C and P of particles that are eigenstates (only the ones the page models)
-const C_EIGEN = { 'γ': -1, 'π⁰': 1, 'η': 1, 'h': 1 };
-const CP_EIGEN = { 'π⁰': -1, 'η': -1, 'h': 1, 'γ': 1 };
+const C_EIGEN = { 'γ': -1, 'π⁰': 1, 'η': 1, 'h': 1, 'η′': 1, 'ρ⁰': -1, 'ω': -1, 'φ': -1, 'ηc': 1, 'J/ψ': -1, 'ηb': 1, 'Υ': -1 };
+const CP_EIGEN = { 'π⁰': -1, 'η': -1, 'h': 1, 'γ': 1, 'η′': -1, 'ρ⁰': 1, 'ω': 1, 'φ': 1, 'ηc': -1, 'J/ψ': 1, 'ηb': -1, 'Υ': 1 };
+// G parity of the non-strange light mesons (G = C (−1)^I); conserved by the strong interaction
+const G_PARITY = { 'π⁺': -1, 'π⁻': -1, 'π⁰': -1, 'η': 1, 'η′': 1, 'ρ⁺': 1, 'ρ⁻': 1, 'ρ⁰': 1, 'ω': -1, 'φ': -1 };
 
 /** Quantum numbers of one particle symbol. */
 export function props(sym) {
@@ -47,11 +49,8 @@ export function props(sym) {
 // ---------------------------------------------------------- hadronic thresholds
 // Ground-state hadrons used only to find the lightest hadronic final state with given
 // flavour (charm and bottom hadrons are not otherwise in the catalogue).
-const EXTRA_HADRONS = [
-    ['D⁰', ['c', 'ū'], 1864.84], ['D⁺', ['c', 'd̄'], 1869.66], ['Dₛ⁺', ['c', 's̄'], 1968.35], ['Λc⁺', ['u', 'd', 'c'], 2286.46],
-    ['B⁺', ['u', 'b̄'], 5279.34], ['B⁰', ['d', 'b̄'], 5279.66], ['Bₛ⁰', ['s', 'b̄'], 5366.92], ['Λb⁰', ['u', 'd', 'b'], 5619.60],
-    ['Bc⁺', ['c', 'b̄'], 6274.47], ['ηc', ['c', 'c̄'], 2983.9], ['ηb', ['b', 'b̄'], 9398.7]
-];
+// (charm and bottom ground states are now part of the catalogue itself)
+const EXTRA_HADRONS = [];
 let THRESH_TABLE = null;
 // Light flavours (u, d) can be netted: a uū pair can end up in a π⁰ or annihilate into
 // gluons. s, c and b pairs need a hadron that contains them (η or a kaon pair for ss̄,
@@ -218,16 +217,42 @@ export function checkProcess(initial, final, opts = {}) {
     if (!flavourChange) add('flavour', 'Flavour (S, C, B̃, T)', 'pass', 'conserved; strong and electromagnetic interactions can contribute');
     else {
         const parts = [['S', dS], ['C', dC], ['B̃', dBb], ['T', dT]].filter(x => x[1]).map(x => 'Δ' + x[0] + ' = ' + (x[1] > 0 ? '+' : '−') + Math.abs(x[1])).join(', ');
-        if (hadronDecay && F.length > 1 && [dS, dC, dBb].some(x => Math.abs(x) >= 2)) {
-            add('flavour', 'Flavour (ΔS ≤ 1 per W)', 'fail', parts + '. Strong and electromagnetic interactions conserve flavour; one W vertex changes it by one unit. A ΔS = 2 decay would need two weak interactions and none has been observed.', CITE.DS2);
-        } else add('flavour', 'Flavour', 'note', parts + ': only the charged weak current changes flavour, through a W and the CKM matrix. Strangeness is conserved by the strong and electromagnetic interactions.', [CITE.CABIBBO, CITE.KM]);
-        // ΔS = ΔQ for semileptonic hadron decays
-        const leptonPair = F.some(p => p.neutrino) && F.some(p => !p.neutrino && (p.Le || p.Lmu || p.Ltau));
-        if (hadronDecay && leptonPair && dS !== 0) {
-            const dQh = sum(F.filter(p => p.hadron), p => p.Q) - I[0].Q;
-            if (dS !== dQh) add('dsdq', 'ΔS = ΔQ rule', 'fail', 'ΔS = ' + dS + ' but the hadronic charge changes by ' + dQh + '. At first order the s quark turns into a u quark, so the hadron charge must change with the strangeness. ΔS = −ΔQ decays have not been observed.', CITE.DSDQ);
-            else add('dsdq', 'ΔS = ΔQ rule', 'pass', 'ΔS = ΔQ = ' + dS);
+        // Can one W do it? A W changes one up-type quark into a down-type one (or back) on one
+        // line, and either becomes a lepton pair (semileptonic) or makes a quark–antiquark pair
+        // of the opposite up/down kinds. So the net change in quark number per flavour must be
+        // ±(e_U − e_D) for a semileptonic process, or ±[(e_U − e_D) + (e_D′ − e_U′)] otherwise.
+        const UPS = ['u', 'c', 't'], DNS = ['d', 's', 'b'];
+        const chargedLep = F.filter(p => !p.neutrino && (p.Le || p.Lmu || p.Ltau)), nus = F.filter(p => p.neutrino);
+        const semileptonic = chargedLep.length === 1 && nus.length === 1;
+        const vecEq = v => FLAV.every(f => Math.abs((v[f] || 0) - dF[f]) < 1e-9);
+        let oneW = false;
+        for (const U of UPS) for (const D of DNS) for (const sg of [1, -1]) {
+            if (semileptonic) { const v = {}; v[U] = sg; v[D] = (v[D] || 0) - sg; if (vecEq(v)) oneW = true; }
+            else for (const U2 of UPS) for (const D2 of DNS) { const v = {}; v[U] = sg; v[D] = (v[D] || 0) - sg; v[D2] = (v[D2] || 0) + sg; v[U2] = (v[U2] || 0) - sg; if (vecEq(v)) oneW = true; }
         }
+        const mixing11 = I.length === 1 && F.length === 1;
+        if (hadronDecay && !hasWZ && !mixing11 && !oneW) {
+            add('flavour', 'Flavour (one W per first-order weak process)', 'fail', parts + '. Strong and electromagnetic interactions conserve flavour; one W changes one quark line by one unit (c → s, b → c, s → u, …) and can create one quark–antiquark pair. This change needs two weak interactions' + (Math.abs(dS) >= 2 ? ' (ΔS = 2)' : '') + ', which has not been observed in a decay.', CITE.DS2);
+        } else add('flavour', 'Flavour', 'note', parts + ': only the charged weak current changes flavour, through a W and the CKM matrix. Strangeness, charm and bottomness are conserved by the strong and electromagnetic interactions.', [CITE.CABIBBO, CITE.KM]);
+        // ΔS = ΔQ, ΔC = ΔQ, ΔB̃ = ΔQ for semileptonic hadron decays with one flavour change:
+        // at first order the heavier quark turns into the lighter one by emitting a W, so the
+        // hadron's charge changes with its flavour quantum number
+        const leptonPair = F.some(p => p.neutrino) && F.some(p => !p.neutrino && (p.Le || p.Lmu || p.Ltau));
+        const changed = [['S', dS, 'strangeness', 'the s quark turns into a u quark'], ['C', dC, 'charm', 'the c quark turns into an s or d quark'], ['B̃', dBb, 'bottomness', 'the b quark turns into a c or u quark']].filter(x => x[1] !== 0);
+        if (hadronDecay && leptonPair && changed.length === 1) {
+            const [nm, dX, word, how] = changed[0];
+            const dQh = sum(F.filter(p => p.hadron), p => p.Q) - I[0].Q;
+            const id = nm === 'S' ? 'dsdq' : 'd' + (nm === 'C' ? 'c' : 'b') + 'dq';
+            if (Math.abs(dX - dQh) > 1e-9) add(id, 'Δ' + nm + ' = ΔQ rule', 'fail', 'Δ' + nm + ' = ' + dX + ' but the hadronic charge changes by ' + dQh + '. At first order ' + how + ', so the hadron charge must change with the ' + word + '. Δ' + nm + ' = −ΔQ decays have not been observed.', nm === 'S' ? CITE.DSDQ : CITE.PDG);
+            else add(id, 'Δ' + nm + ' = ΔQ rule', 'pass', 'Δ' + nm + ' = ΔQ = ' + dX);
+        }
+    }
+
+    // ---- G parity: the strong interaction conserves it for non-strange light mesons
+    if (!needsWeak && I.length === 1 && G_PARITY[I[0].sym] !== undefined && F.length >= 2 && F.every(p => G_PARITY[p.sym] !== undefined)) {
+        const gi = G_PARITY[I[0].sym], gf = F.reduce((a, p) => a * G_PARITY[p.sym], 1);
+        if (gi !== gf) add('gparity', 'G parity (isospin)', 'note', 'G: ' + sign(gi) + ' → ' + sign(gf) + '. The strong interaction conserves G parity, so this decay needs isospin breaking (the u–d mass difference or electromagnetism, e.g. ρ–ω mixing) and is suppressed. ' + (I[0].sym === 'ω' && F.length === 2 ? 'ω → π⁺π⁻ is observed with a branching fraction of 1.5 %.' : 'Rates of such decays are small; see the PDG listings.'), CITE.PDG);
+        else add('gparity', 'G parity (isospin)', 'pass', 'G: ' + sign(gi) + ' → ' + sign(gf));
     }
 
     // ---- C parity (strong and electromagnetic only)

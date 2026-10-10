@@ -51,6 +51,7 @@ verified by hand in the browser.
 | `js/directory.js` | Mass tooltips |
 | `loops.html`, `js/loopchannel.js` | Rule-built page: typed processes, zones with colours, √s, discovery, background worker |
 | `js/loopui.js` | Particle panel for loops.html: colour pickers under every coloured particle, 3D eightfold view |
+| `js/loops/hadrondata.js` | Full hadron catalogue for the rule-built pages (132 hadrons: light, strange, charm, bottom; 0⁻, 1⁻, ½⁺, 3/2⁺ and antibaryons) with PDG 2026 masses, widths/lifetimes, main decays, superposition components, aliases; `identifyHadron`, `lifetimeText` |
 | `js/loops/pdg.js` | Every Standard Model parameter (PDG 2026): couplings, masses with schemes, CKM fit; v from G_F |
 | `js/loops/engine.js` | Vertex table (physical; plus 't Hooft–Feynman Goldstone/ghost tables `VR`, `Q4R`), tree enumeration, planar side choice (reference order, identical-particle exchange), layout scored on the drawn geometry, SVG incl. self-loops, Feynman-rule tooltips, counterterm constants |
 | `js/loops/graph.js` | General graph engine for any loop order: topology moves, labelling from the vertex table, canonical form, symmetry factors, 1PI analysis, planarity, `loopDiagrams()` |

@@ -1,5 +1,125 @@
 # Changelog
 
+## Every observed ground-state hadron, with its decays
+
+The eightfold view no longer greys out hadrons as "not modelled here". Every observed member is in the catalogue and can be selected. Bottom ground states are added as well, and decays of all of them are built at quark level.
+
+### New: `js/loops/hadrondata.js` (132 hadrons, up from 26)
+
+The catalogue the rule-built pages use: the light hadrons of `js/hadrons.js` plus everything below, with antibaryons generated automatically. `js/hadrons.js` itself is unchanged, because `classic.html` still uses it.
+
+**Mesons, 0⁻**
+- η′
+- D⁰, D̄⁰, D⁺, D⁻, Dₛ⁺, Dₛ⁻
+- ηc
+- B⁺, B⁻, B⁰, B̄⁰, Bₛ⁰, B̄ₛ⁰, B_c⁺, B_c⁻
+- ηb
+
+**Mesons, 1⁻**
+- ρ⁺, ρ⁰, ρ⁻, ω, φ
+- K*⁺, K*⁻, K*⁰, K̄*⁰
+- D*⁰, D̄*⁰, D*⁺, D*⁻, Dₛ*⁺, Dₛ*⁻
+- J/ψ
+- B*⁺, B*⁻, B*⁰, B̄*⁰, Bₛ*⁰, B̄ₛ*⁰
+- Υ(1S)
+
+**Baryons, ½⁺**
+- Λc⁺
+- Σc⁺⁺, Σc⁺, Σc⁰
+- Ξc⁺, Ξc⁰, Ξc′⁺, Ξc′⁰
+- Ωc⁰
+- Ξcc⁺⁺, Ξcc⁺ (Ξcc⁺ observed by LHCb in 2026, cited)
+- Λb⁰, Σb⁺, Σb⁻, Ξb⁰, Ξb⁻, Ωb⁻
+
+**Baryons, 3/2⁺**
+- Δ⁺⁺, Δ⁺, Δ⁰, Δ⁻
+- Σ*⁺, Σ*⁰, Σ*⁻
+- Ξ*⁰, Ξ*⁻
+- Σc*⁺⁺, Σc*⁺, Σc*⁰
+- Ξc*⁺, Ξc*⁰
+- Ωc*⁰
+- Σb*⁺
+
+**Data for each hadron (PDG 2026)**
+- Mass, plus width (strong and electromagnetic decays) or mean life (weak decays), from the PDG 2026 Summary Tables and Listings. Examples:
+  - ρ: Γ = 149.1 MeV;
+  - J/ψ: Γ = 92.6 keV;
+  - D⁰: τ = 410.3 fs;
+  - B⁰: τ = 1.5113 ps;
+  - Λb⁰: τ = 1.465 ps.
+- The main measured decay modes with branching fractions. Examples:
+  - ω → π⁺π⁻π⁰ 89.2 %;
+  - φ → K⁺K⁻ 50.1 %;
+  - D*⁺ → D⁰π⁺ 67.7 %;
+  - J/ψ → ggg 64.1 %;
+  - Λc⁺ → pK⁻π⁺ 6.37 %.
+- J^P, flavour family, and typed aliases (`J/psi`, `D0`, `Lambdac+`, `B_s0`, `Upsilon`, …).
+- Flavour superpositions (η′, ρ⁰, ω) list their quark components.
+
+The light hadrons gain PDG lifetimes and main decays too: π±, π⁰, K±, η, n, Λ, Σ, Ξ, Ω⁻; K⁰/K̄⁰ get a K_S/K_L note.
+
+**Lookups**
+- `identifyHadron` uses the full table and prefers the ground state: c c̄ → ηc (with J/ψ as an alternative), u d c → Λc⁺.
+- `lifetimeText` writes τ, or Γ with ħ/Γ.
+
+### Rules (`js/loops/rules.js`)
+
+- **One-W flavour check.** This replaces the old |ΔS| ≤ 1 test. A first-order weak process must change quark numbers by ±(e_U − e_D) when semileptonic, or by ±[(e_U − e_D) + (e_D′ − e_U′)] otherwise.
+  - D⁺ → K̄⁰e⁺ν is allowed; D⁺ → K⁰e⁺ν is forbidden.
+  - B⁺ → D⁰e⁺ν is forbidden.
+  - B̄ₛ⁰ → J/ψ φ (b → c c̄ s) is allowed.
+  - D⁰ → K⁺π⁻ (doubly Cabibbo-suppressed) is allowed.
+  - K⁰ → K̄⁰ mixing keeps its own note.
+- **ΔC = ΔQ and ΔB̃ = ΔQ.** These join ΔS = ΔQ for semileptonic decays with one flavour change.
+- **C eigenvalues** for η′, ρ⁰, ω, φ, ηc, J/ψ, ηb, Υ (and CP). So J/ψ → γγ and ρ⁰ → π⁰π⁰ are forbidden, and ηc → γγ is allowed.
+- **G parity** for the non-strange light mesons. A violation is a note, because isospin breaking makes it allowed but suppressed; for example ω → π⁺π⁻ is observed at 1.5 %.
+- The extra threshold-only hadron list is gone, since charm and bottom hadrons are now in the catalogue.
+
+### Notes on every hadron decay (`js/loops/caveats.js`)
+
+- **Interaction.** Says whether the decay is strong, electromagnetic or weak, why, and gives the parent's lifetime or width.
+- **Measured decays (PDG 2026).** Lists the parent's main decay modes.
+- **OZI suppression.** For φ, J/ψ, ηc, Υ and ηb decaying to hadrons that don't contain their own flavour, with the reason (disconnected quark lines through two or three gluons). Annihilation into leptons gets its own note.
+- Superposition notes cover every flavour-mixed meson.
+
+### Quark-level decay diagrams (`js/loops/hadronq.js`, `colourui.js`)
+
+- The quark content comes from the catalogue, including superposition components. Colour pickers work for every meson.
+- Verified diagrams with notes. Each takes 16–110 ms, except J/ψ → π⁺π⁻π⁰ (8 s, OZI-suppressed through three gluons):
+
+| Interaction | Decays checked |
+|---|---|
+| Strong | Δ⁺⁺ → pπ⁺, ρ⁰ → π⁺π⁻, φ → K⁺K⁻, K*⁺ → K⁰π⁺, D*⁺ → D⁰π⁺, Σ*⁺ → Λπ⁺, Ξ*⁰ → Ξ⁻π⁺, Σc⁺⁺ → Λc⁺π⁺, η′ → ηπ⁺π⁻ |
+| Electromagnetic | ω → π⁰γ, D*⁰ → D⁰γ, Σ⁰ → Λγ, J/ψ → e⁺e⁻ and μ⁺μ⁻, ηc → γγ, Υ → τ⁺τ⁻ |
+| Weak | D⁰ → K⁻π⁺, D⁺ → K̄⁰e⁺ν, Dₛ⁺ → φπ⁺, B⁻ → D⁰π⁻, B̄⁰ → D⁺e⁻ν̄, B̄ₛ⁰ → J/ψ φ, B_c⁺ → J/ψ π⁺, Λc⁺ → pK⁻π⁺, Ξc⁰ → Ξ⁻π⁺, Ωc⁰ → Ω⁻π⁺, Ξcc⁺⁺ → Ξc⁺π⁺, Λb⁰ → Λc⁺π⁻, Ξb⁻ → Ξc⁰π⁻, Ωb⁻ → Ωc⁰π⁻ |
+
+### Discovery ("all decays")
+
+- A decaying hadron's final states no longer include free quarks or gluons.
+- Results are ordered strong → electromagnetic → weak, then by multiplicity. Each final state carries an interaction chip.
+- Example: ρ⁰ now lists 62 final states, led by π⁺π⁻.
+
+### Interface
+
+- **Hadron list.** Sub-grouped by flavour family (light, strange, charm, bottom) in each of Mesons, Baryons and Antibaryons. Each entry has a J^P badge and a tooltip with its lifetime or width and main PDG decays.
+- **Eightfold view.** Every observed member is live. The legend now says "predicted, not yet observed", which applies to Ωcc⁺, Ξcc*, Ωcc* and Ωccc only. Tooltips add the lifetime or width.
+- **Presets.** New buttons: Δ⁺⁺ → pπ⁺, φ → K⁺K⁻, Σ⁰ → Λγ, D*⁺ → D⁰π⁺, D⁰ → K⁻π⁺, J/ψ → μ⁻μ⁺, B⁻ → D⁰π⁻, Λb⁰ → Λc⁺π⁻, ρ⁰ · all decays.
+- **Typed processes** accept the new aliases.
+
+### Fixes
+
+- The loop chip on quark-level diagrams counts loops of the interaction graph only. Spectator lines had made it read "−1-loop".
+
+### Tests (121 total, all passing)
+
+`tests/hadrons.test.mjs` (new, 5 tests):
+- every observed eightfold member is in the catalogue;
+- charges match the quarks, and antiparticles pair up with opposite charge;
+- the classic table is untouched;
+- identification by quark content prefers the ground state;
+- the new rules (one-W flavour, C parity, G parity) behave as above;
+- 12 quark-level strong, electromagnetic and weak decays are built, validated, and given the right interaction note.
+
 ## Background: a faint sea of pair creation and annihilation
 
 - `js/vacuum.js` (new) draws a fixed, full-window canvas behind the page:

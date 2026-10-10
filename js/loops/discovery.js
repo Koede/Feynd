@@ -6,7 +6,7 @@
 
 import { FV } from './engine.js';
 import { PARTICLES } from '../particles.js';
-import { HADRONS } from '../hadrons.js';
+import { HADRONS } from './hadrondata.js';
 import { props, checkProcess } from './rules.js';
 import { buildRuleDiagrams } from './build.js';
 
@@ -36,6 +36,8 @@ export function discover(initial, opts = {}) {
     const budget = initial.length === 1 ? I[0].m : (sqrtS ? sqrtS * 1000 : Infinity);
     if (initial.length === 1 && budget === 0) return { groups: [], excluded: {}, note: 'A massless particle cannot decay. Add a second initial particle.' };
     pool = pool.filter(s => props(s).m < budget);
+    // a hadron decays into hadrons, leptons and photons: free quarks and gluons cannot leave it
+    if (hadronIn) pool = pool.filter(s => !props(s).colour);
     const P = Object.fromEntries(pool.map(s => [s, props(s)]));
 
     const groups = [], excluded = {};
@@ -66,8 +68,9 @@ export function discover(initial, opts = {}) {
             const res = buildRuleDiagrams(initial, fin, { loops: false, autoLoops: loops, gauge: opts.gauge, colours: colours ? { initial: colours.initial, final: fin.map(() => null) } : null, sqrtS, deadline: Math.min(deadline, Date.now() + 8000) });
             const items = res.tree.concat(res.loops);
             if (!items.length) { bump('no diagram'); continue; }
+            const interaction = rules.needsWeak ? 'weak' : fin.some(x => x === 'γ') || items.some(it => it.diagram.edges.some(e => e.p === 'gamma')) ? 'electromagnetic' : 'strong';
             const g = {
-                final: fin, items, count: items.length, rules, loopInduced: !res.tree.length,
+                final: fin, items, count: items.length, rules, loopInduced: !res.tree.length, interaction,
                 hadronic: res.hadronic, best: items.reduce((a, it) => Math.max(a, it.diagram.strength || 0), 0),
                 minOrder: Math.min(...items.map(it => it.orderTotal || 0)), ini: res.ini, fin: res.fin
             };
@@ -75,6 +78,8 @@ export function discover(initial, opts = {}) {
             if (onGroup) onGroup(g);
         }
     }
-    groups.sort((a, b) => a.final.length - b.final.length || a.loopInduced - b.loopInduced || a.minOrder - b.minOrder || b.best - a.best);
+    // strong decays first (fastest), then electromagnetic, then weak; then fewer particles
+    const RANK = { strong: 0, electromagnetic: 1, weak: 2 };
+    groups.sort((a, b) => (hadronIn ? RANK[a.interaction] - RANK[b.interaction] : 0) || a.final.length - b.final.length || a.loopInduced - b.loopInduced || a.minOrder - b.minOrder || b.best - a.best);
     return { groups, excluded, truncated, screened: done };
 }

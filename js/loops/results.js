@@ -154,7 +154,9 @@ function notesHTML(notes, open) {
 
 function chipsHTML(item) {
     const inter = (item.interactions || []).map(g => '<span class="chip ' + g.toLowerCase() + '">' + ({ EW: 'weak', QED: 'QED', QCD: 'QCD', Higgs: 'Higgs' }[g] || g) + '</span>').join('');
-    const nl = item.diagram ? FV.countLoops(item.diagram) : 0;
+    // loops of the connected interaction graph (spectator lines are separate straight lines)
+    const d0 = item.diagram;
+    const nl = !d0 ? 0 : d0.nloops !== undefined ? d0.nloops : Math.max(0, d0.edges.filter(e => !e.spectator).length - d0.verts.filter(v => !v.spectator).length + 1);
     const loops = nl ? '<span class="chip">' + nl + '-loop</span>' : '';
     const sym = item.diagram && item.diagram.symmetry > 1 ? '<span class="chip" title="symmetry factor">S = 1/' + item.diagram.symmetry + '</span>' : '';
     const gauge = item.diagram && item.diagram.gauge === 'feynman' ? '<span class="chip" title="\'t Hooft–Feynman gauge">R<sub>ξ</sub></span>' : '';
@@ -441,7 +443,7 @@ export function renderDiscovery(container, data, view = {}) {
         + '<p class="summary"><b>' + groups.length + '</b> final state' + (groups.length === 1 ? '' : 's') + ' with diagrams, from <b>' + (data.screened || 0).toLocaleString() + '</b> screened'
         + (ex.length ? '. Excluded by: ' + ex.map(([k, n]) => esc(RULE_NAMES[k] || k) + ' ' + n.toLocaleString()).join(', ') : '') + (data.truncated ? '. <b>The search stopped at the time limit</b>; raise it by lowering the maximum multiplicity.' : '') + '.</p>';
     if (data.note) h += '<div class="note">' + data.note + '</div>';
-    h += groups.map((g, gi) => '<details class="grp" data-g="' + gi + '"' + (gi < 3 ? ' open' : '') + '><summary>' + symProc(data.initial || [], g.final) + (g.loopInduced ? ' <span class="chip">loop-induced</span>' : '') + (g.hadronic ? ' <span class="chip">quark level</span>' : '') + '<span class="cnt">' + g.count + ' diagram' + (g.count === 1 ? '' : 's') + '</span></summary><div class="body"></div></details>').join('');
+    h += groups.map((g, gi) => '<details class="grp" data-g="' + gi + '"' + (gi < 3 ? ' open' : '') + '><summary>' + symProc(data.initial || [], g.final) + (g.interaction ? ' <span class="chip ' + ({ strong: 'qcd', electromagnetic: 'qed', weak: 'ew' }[g.interaction]) + '">' + g.interaction + '</span>' : '') + (g.loopInduced ? ' <span class="chip">loop-induced</span>' : '') + (g.hadronic ? ' <span class="chip">quark level</span>' : '') + '<span class="cnt">' + g.count + ' diagram' + (g.count === 1 ? '' : 's') + '</span></summary><div class="body"></div></details>').join('');
     root.innerHTML = h;
     const shown = {};
     const fillGroup = (det) => {
