@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Standard Model · Feynman Diagrams | particles, hadrons &amp; multi-body decays</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- LEFT PANEL: the particle tabs are built by js/ui.js from particles.js and hadrons.js -->
+  <div class="left-panel">
+    <div class="title-box">
+      <h1>
+        <i class="fas fa-atom"></i> Feynman Diagram Generator
+        <small>tree-level</small>
+      </h1>
+    </div>
+  </div>
+
+  <!-- RIGHT SIDE: Feynman diagram generator -->
+  <div class="right-panel">
+    <div class="feynman-prebox">
+      <div class="preset-row">
+        <span class="preset-label">Elementary :</span>
+        <div class="preset-buttons">
+          <button class="preset-btn" data-preset="moller">e⁻ e⁻ → e⁻ e⁻</button>
+          <button class="preset-btn" data-preset="annihilation">e⁻ e⁺ → μ⁻ μ⁺</button>
+          <button class="preset-btn" data-preset="compton">e⁻ γ → e⁻ γ</button>
+          <button class="preset-btn" data-preset="bhabha">e⁻ e⁺ → e⁻ e⁺</button>
+          <button class="preset-btn" data-preset="pair-production">e⁻ e⁺ → γ γ</button>
+          <button class="preset-btn" data-preset="muon-decay">μ⁻ decay</button>
+          <button class="preset-btn" data-preset="gluon4">g g → g g</button>
+        </div>
+      </div>
+      <div class="preset-row hadron-presets">
+        <span class="preset-label">Hadronic :</span>
+        <div class="preset-buttons">
+          <button class="preset-btn" data-preset="pion-decay">π⁺ → μ⁺ ν<sub>μ</sub></button>
+          <button class="preset-btn" data-preset="pion-radiative">π⁰ → γ γ</button>
+          <button class="preset-btn" data-preset="neutron-beta">n → p e⁻ ν̄<sub>e</sub></button>
+          <button class="preset-btn" data-preset="kaon-decay">K⁺ → μ⁺ ν<sub>μ</sub></button>
+          <button class="preset-btn" data-preset="lambda-decay">Λ → p π⁻</button>
+          <button class="preset-btn" data-preset="omega-decay">Ω⁻ → Λ K⁻</button>
+          <button class="preset-btn" data-preset="ee-to-pions">e⁻ e⁺ → π⁺ π⁻</button>
+          <button class="preset-btn" data-preset="pion-search">π⁺ · all decays</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="feynman-box">
+      <div class="input-panel">
+        <div class="state-group" id="initialStateGroup">
+          <label>Initial state <span class="clear-zone" data-zone="initial"><i class="fas fa-times-circle"></i> clear</span></label>
+          <div class="drop-zone" id="initialDropZone"></div>
+          <div class="placeholder-text">Click a particle on the left, or drag it here…</div>
+        </div>
+        <div class="state-arrow" aria-hidden="true">
+          <i class="fas fa-arrow-right"></i>
+        </div>
+        <div class="state-group" id="finalStateGroup">
+          <label>Final state <span class="clear-zone" data-zone="final"><i class="fas fa-times-circle"></i> clear</span></label>
+          <div class="drop-zone" id="finalDropZone"></div>
+          <div class="placeholder-text">Leave empty to discover all possible outcomes, or click to specify them</div>
+        </div>
+
+        <div class="generate-controls">
+          <label class="multiplicity-picker">
+            <span>Max final particles</span>
+            <select id="maxMultiplicity">
+              <option value="2">2</option>
+              <option value="3" selected>3</option>
+              <option value="4">4</option>
+            </select>
+          </label>
+          <button class="generate-btn" id="generateBtn"><i class="fas fa-bolt"></i> Generate</button>
+        </div>
+      </div>
+
+      <div id="errorDisplay" class="error-message" style="display: none;"></div>
+
+      <div class="canvas-box">
+        <div class="legend">
+          <span>
+            <svg width="25" height="10" aria-hidden="true"><line x1="0" y1="5" x2="25" y2="5" stroke="#1b221c" stroke-width="2.5"/></svg>
+            Fermion
+          </span>
+          <span>
+            <svg width="30" height="10" aria-hidden="true"><line x1="0" y1="5" x2="30" y2="5" stroke="#1b221c" stroke-width="2.5" stroke-dasharray="6,4"/></svg>
+            Scalar
+          </span>
+          <span>
+            <svg width="30" height="15" aria-hidden="true"><path d="M0,7.5 Q3,0 7.5,7.5 T15,7.5 T22.5,7.5 T30,7.5" fill="none" stroke="#b45309" stroke-width="2.5"/></svg>
+            Vector
+          </span>
+          <span>
+            <svg width="30" height="15" aria-hidden="true"><path d="M0,7.5 C4,-2 10,-2 10,7.5 C10,17 4,17 4,7.5 C4,-2 14,-2 14,7.5 C14,17 8,17 8,7.5 C8,-2 18,-2 18,7.5 C18,17 12,17 12,7.5 C12,-2 22,-2 22,7.5 C22,17 16,17 16,7.5" fill="none" stroke="#27ae60" stroke-width="2"/></svg>
+            Gluon
+          </span>
+          <span>
+            <svg width="34" height="14" aria-hidden="true">
+              <line x1="0" y1="7" x2="18" y2="7" stroke="#1f5e8e" stroke-width="4" stroke-linecap="round"/>
+              <circle cx="18" cy="7" r="4.5" fill="#1f5e8e"/>
+              <path d="M20,9 q4,1 5,4 M20,5 q4,-1 5,-4" fill="none" stroke="#1b221c" stroke-width="1.6"/>
+              <path d="M27,2 q2,2.5 0,5 q-2,2.5 0,5" fill="none" stroke="#1f5e8e" stroke-width="1.6"/>
+            </svg>
+            Hadron (valence quarks braced)
+          </span>
+        </div>
+        <div id="channelGrid" class="results"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/channel.js"></script>
+</body>
+</html>
