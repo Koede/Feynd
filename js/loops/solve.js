@@ -65,7 +65,7 @@ export function extendedDiagrams(initial, final, opts = {}) {
     const { sqrtS = null, loops = false, gauge } = opts;
     const buildRuleDiagrams = opts.buildRuleDiagrams || defaultBuilder;
     const conversion = initial.slice().sort().join(' ') !== final.slice().sort().join(' ');
-    const deadline = Math.min(opts.deadline || Infinity, Date.now() + 25000);
+    const deadline = Math.min(opts.deadline || Infinity, Date.now() + 35000);
     const partonic = initial.concat(final).some(s => props(s) && props(s).colour);
     // extras: every elementary particle and every hadron; free quarks and gluons only
     // when the process is already partonic
@@ -87,6 +87,24 @@ export function extendedDiagrams(initial, final, opts = {}) {
         (byVec.get(vkey(add(D, vx, -1))) || []).forEach(y => { if (x <= y) push([x, y], []); });        // vx + vy = D
         (byVec.get(vkey(add(neg(D), vx, -1))) || []).forEach(y => { if (x <= y) push([], [x, y]); });   // −(vx + vy) = D
     });
+    // three extra particles, from the light ones, when one or two cannot balance the books
+    if (!cands.length) {
+        const light = pool.filter(x => props(x).m < 1000 && !props(x).colour);
+        const lightVec = new Map();
+        light.forEach(x => { const k = vkey(V.get(x)); if (!lightVec.has(k)) lightVec.set(k, []); lightVec.get(k).push(x); });
+        for (const x of light) for (const y of light) {
+            const vx = V.get(x), vy = V.get(y);
+            // signs: +1 for an added incoming particle, −1 for an outgoing one; need Σ sign·v = D
+            for (const [sx, sy, sz] of [[1, 1, 1], [1, 1, -1], [1, -1, -1], [-1, -1, -1]]) {
+                const need = add(add(D, vx, -sx), vy, -sy).map(t => t * sz);
+                (lightVec.get(vkey(need)) || []).forEach(z => {
+                    const parts = [[x, sx], [y, sy], [z, sz]];
+                    push(parts.filter(p => p[1] > 0).map(p => p[0]).sort(), parts.filter(p => p[1] < 0).map(p => p[0]).sort());
+                });
+            }
+            if (cands.length > 4000) break;
+        }
+    }
     cands.sort((a, b) => a.cost - b.cost);
 
     // screen every candidate with the selection rules first (cheap), then refine the cost:
@@ -97,7 +115,7 @@ export function extendedDiagrams(initial, final, opts = {}) {
     for (const c of cands.slice(0, 6000)) {
         if (Date.now() - t0 > 6000) break;
         const ini = initial.concat(c.addIn), fin = final.concat(c.addOut);
-        if (ini.length + fin.length > 6) continue;
+        if (ini.length + fin.length > 7) continue;
         // an added particle that is already on the other side only scatters: no conversion
         if (conversion && (c.addIn.some(x => final.includes(x) || c.addOut.includes(x)) || c.addOut.some(x => initial.includes(x)))) continue;
         const k = key(ini, fin);
@@ -111,14 +129,19 @@ export function extendedDiagrams(initial, final, opts = {}) {
         }
         const dF = rules.dF || {};
         const flavourUnits = ['s', 'c', 'b', 't'].reduce((a, f) => a + Math.abs(dF[f] || 0), 0);
-        const shape = (ini.length >= 3 && fin.length === 1) ? 2.5 : 0;
+        // fusing into one particle needs √s tuned to its mass: less natural than 2 → 2
+        const shape = fin.length === 1 && ini.length >= 2 ? (ini.length >= 3 ? 3 : 2) : 0;
         const decay = ini.length === 1 ? -3.5 : 0;          // a spontaneous decay needs no beam or target
         ok.push({ c, ini, fin, k, rules, score: c.cost + (rules.needsWeak ? 2.5 : 0) + 1.5 * flavourUnits + shape + decay + (NAMED_K[k] ? -1 : 0) });
     }
     ok.sort((a, b) => a.score - b.score);
+    let tried = 0;
     for (const { c, ini, fin, k, rules } of ok) {
         if (Date.now() > deadline || items.length >= MAX_ITEMS) break;
-        const res = buildRuleDiagrams(ini, fin, { loops: false, autoLoops: loops, gauge, sqrtS, extras: false, deadline: Math.min(deadline, Date.now() + 1500) });
+        // the best-ranked routes get time for large quark-level diagrams (baryon pairs need
+        // three quark lines made by gluons); later ones only a quick try
+        const budget = tried++ < 4 ? 7000 : 1200;
+        const res = buildRuleDiagrams(ini, fin, { loops: false, autoLoops: loops, gauge, sqrtS, extras: false, hadronBudget: budget, deadline: Math.min(deadline, Date.now() + budget + 300) });
         const it = res.tree[0] || res.loops[0];
         if (!it) continue;
         const d = it.diagram;

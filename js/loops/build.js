@@ -73,7 +73,7 @@ export function buildRuleDiagrams(initial, final, opts = {}) {
     } else if (rules.allowed) {
         if (hadronic) {
             onProgress && onProgress('Building the quark-level diagram');
-            const hd = hadronDiagram(initial, final, { colours, budgetMs: 8000, maxLegs: 8 });
+            const hd = hadronDiagram(initial, final, { colours, budgetMs: Math.max(300, Math.min(opts.hadronBudget || 8000, deadline - Date.now())), maxLegs: 8 });
             if (hd) {
                 out.ini = hd.ini; out.fin = hd.fin;
                 const it = { kind: 'hadron', diagram: hd.diagram, title: 'Quark level', group: hd.spectators ? hd.spectators + ' spectator' + (hd.spectators === 1 ? '' : 's') : 'no spectators', ini: hd.ini, fin: hd.fin, initial, final, noLoops: true, spectators: hd.spectators };

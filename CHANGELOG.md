@@ -1,5 +1,38 @@
 # Changelog
 
+## Synthesis routes for any pair of particles
+
+The route search now covers any starting particle and any target.
+
+**Coverage**
+- If one or two added particles cannot balance the quantum numbers, the search tries **three** extras drawn from the light particles (photons, leptons, neutrinos, light mesons and baryons). Processes of up to 7 legs are allowed.
+
+**Quark-level diagrams that need time**
+- The four best-ranked routes get up to 7 s each to build their quark-level diagram. Baryon–antibaryon pair creation needs three quark lines made by gluons, so it needs that time. Later routes get a quick 1.2 s try.
+- `build.js` takes a `hadronBudget` option for this.
+- The total search budget is 35 s, run in the background worker.
+
+**Ranking**
+- Fusing into a single particle (2 → 1, 3 → 1) now ranks below 2 → 2, because it needs √s tuned exactly to the product's mass.
+
+**Spot checks (first route listed)**
+
+| Target | First route |
+|---|---|
+| e⁻ → p | e⁻e⁺ → p p̄ |
+| γ → p | γγ → p p̄ |
+| ν_e → p | ν_e n → p e⁻ |
+| g → p | gg → p p̄ |
+| Z → Ω⁻ | Z → Ω⁻Ω̄⁺ |
+| p → Ω⁻ | p K⁻ → Ω⁻ K⁺ |
+| K⁺ → Ξ⁻ | K⁺ π⁻ → Ξ⁻ Ω̄⁺ |
+| μ⁻ → D⁰ | μ⁻μ⁺ → D⁰ D̄⁰ |
+| n → Λb⁰ | n γ → Λb⁰ B⁰ |
+| γ → J/ψ | γ π⁰ → J/ψ |
+| h → π⁰ | h → π⁰π⁰ |
+| ν_e → ν_μ | ν_e ν̄_e → ν_μ ν̄_μ |
+| p → e⁻ | p p̄ → e⁻e⁺ |
+
 ## Synthesis routes: added external particles now work for every particle, hadrons included
 
 Previously, *Allow additional external particles?* found nothing for a process such as p → n. The old search accepted only elementary particles on both ends and tried only elementary extras, so any process with a hadron returned nothing.
