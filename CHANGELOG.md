@@ -1,5 +1,23 @@
 # Changelog
 
+## Elementary particles laid out as the Standard Model chart
+
+The Elementary tab now looks like the familiar Standard Model table instead of three stacked lists.
+
+**Layout**
+- Columns are the three generations (I, II, III), then the gauge bosons, then the scalar.
+- Rows are up-type quarks, down-type quarks, charged leptons and neutrinos.
+- Each fermion cell holds the particle and its antiparticle side by side, with charge, mass and name.
+- Gauge bosons sit beside the fermions they couple to in the usual picture: g and γ beside the quarks, Z and W± beside the leptons. The Higgs sits in its own scalar column.
+- Colour coding is kept (blue quarks, green leptons, brown bosons, darker antiparticles).
+
+**Behaviour unchanged**
+- Every icon is still draggable, clicking a particle still adds it to the active state, and the colour pickers still appear in Add Color mode.
+- Applies to `index.html`, `loops.html` and `classic.html`.
+
+**Code**
+- New `js/smchart.js` holds the chart layout as data (`SM_CHART`) and builds it from each page's own entry builder; `ui.js` and `loopui.js` call it. The unused list renderer was removed. Styles are at the end of `style.css`; below about 33 rem the chart scrolls sideways instead of squeezing.
+
 ## Synthesis routes for any pair of particles
 
 The route search now covers any starting particle and any target.

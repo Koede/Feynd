@@ -2,7 +2,8 @@
 // DOM construction: the left-hand particle panel with its Elementary/Hadrons tabs,
 // and the results area with collapsible groups, filter chips and lazy canvases.
 
-import { PARTICLES, ELEMENTARY_PANEL, SELF_CONJUGATE } from './particles.js';
+import { PARTICLES, SELF_CONJUGATE } from './particles.js';
+import { smChartElement } from './smchart.js';
 import { HADRONS, HADRON_PANEL } from './hadrons.js';
 import { setupCanvas, drawDiagram, channelTitle } from './draw.js';
 
@@ -95,41 +96,6 @@ function entryElement(symbol, category, isAnti) {
     return entry;
 }
 
-function categoryElement({ category, title, badge, color, groups }) {
-    const box = document.createElement('div');
-    box.className = `category ${category}`;
-
-    const heading = document.createElement('h2');
-    heading.innerHTML = `<i class="fas fa-circle" style="color: ${color};"></i> ${title}`;
-    const count = document.createElement('span');
-    count.className = 'group-count';
-    count.textContent = badge;
-    heading.appendChild(count);
-    box.appendChild(heading);
-
-    for (const group of groups) {
-        const wrap = document.createElement('div');
-        wrap.className = 'particle-group';
-        if (group.label) {
-            const label = document.createElement('div');
-            label.className = 'group-label';
-            label.textContent = group.label;
-            wrap.appendChild(label);
-        }
-        for (const row of group.rows) {
-            const card = document.createElement('div');
-            card.className = 'particle';
-            row.forEach((symbol, i) => {
-                const el = entryElement(symbol, category[0].toUpperCase() + category.slice(1), i > 0);
-                if (el) card.appendChild(el);
-            });
-            wrap.appendChild(card);
-        }
-        box.appendChild(wrap);
-    }
-    return box;
-}
-
 /**
  * One boxed section per hadron group. Each group gets the same `.category` +
  * `<h2>` treatment as Quarks / Leptons / Bosons, so Mesons, Baryons and
@@ -174,7 +140,7 @@ export function renderParticlePanel(panelEl) {
     const elementaryView = document.createElement('div');
     elementaryView.className = 'tab-view';
     elementaryView.dataset.tab = 'elementary';
-    for (const cat of ELEMENTARY_PANEL) elementaryView.appendChild(categoryElement(cat));
+    elementaryView.appendChild(smChartElement(entryElement, PARTICLES));
 
     const footnote = document.createElement('div');
     footnote.className = 'panel-note';

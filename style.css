@@ -842,3 +842,48 @@ body {
     .channel-grid { grid-template-columns: 1fr; }
     .feynman-box, .feynman-prebox { padding: 0.9rem; }
 }
+
+/* ===== Standard Model chart (Elementary tab) ===== */
+.tab-view[data-tab="elementary"]:not([hidden]) { display: block; }
+.sm-chart { overflow-x: auto; padding-bottom: 0.2rem; }
+.sm-grid {
+    display: grid;
+    grid-template-columns: 3rem repeat(4, minmax(0, 1fr)) minmax(0, 0.78fr);
+    gap: 0.4rem;
+    min-width: 33rem;
+    align-items: stretch;
+}
+.sm-head {
+    font-size: 0.62rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+    color: #4a5b4c; text-align: center; padding: 0.15rem 0 0.25rem; border-bottom: 1px dashed #ccd2eb;
+}
+.sm-head-gauge, .sm-head-scalar { color: #9b5e3b; }
+.sm-rowlabel {
+    display: flex; flex-direction: column; justify-content: center; gap: 0.1rem;
+    font-size: 0.6rem; color: #4a5b4c; line-height: 1.15;
+}
+.sm-rowlabel b { font-size: 0.74rem; color: #1b221c; }
+.sm-rowlabel.quark b { color: #1f5e8e; }
+.sm-rowlabel.lepton b { color: #2b6b5c; }
+.sm-cell {
+    background: linear-gradient(135deg, rgba(253, 251, 240, 0.92), rgba(253, 251, 240, 0.56));
+    border: 1px dashed #ccd2eb;
+    border-radius: 1rem;
+    padding: 0.45rem 0.25rem 0.3rem;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.2rem;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    min-width: 0;
+}
+.sm-cell:hover { background: #fff; border-color: #9aa8c7; box-shadow: 0 10px 20px -8px rgba(20, 30, 20, 0.2); }
+.sm-pair { display: flex; justify-content: center; gap: 0.2rem; width: 100%; }
+.sm-pair .entry {
+    flex: 1 1 0; flex-direction: column; align-items: center; gap: 0.2rem; text-align: center;
+}
+.sm-pair .entry.anti { border-left: 1px dashed #ccd2eb; padding-left: 0.2rem; margin-left: 0; }
+.sm-pair .particle-icon { width: 2.1rem; height: 2.1rem; font-size: 0.85rem; }
+.sm-pair .particle-info { align-items: center; width: 100%; }
+.sm-pair .particle-name-row { justify-content: center; }
+.sm-pair .particle-name { display: none; }
+.sm-pair .particle-meta { justify-content: center; font-size: 0.58rem; gap: 0.1rem; }
+.sm-pair .particle-meta span { padding: 0.02rem 0.25rem; white-space: normal; text-align: center; line-height: 1.15; }
+.sm-name { font-size: 0.66rem; font-weight: 600; color: #2e3a30; letter-spacing: 0.02em; }
